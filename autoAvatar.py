@@ -15,7 +15,8 @@
 #   score screen_name in list
 #   score location in list
 #
-#   review users, attribs and scores
+#   review profiles, attribs and scores
+#   sort profiles
 #
 #
 # file mangement:
@@ -24,7 +25,8 @@
 # API management:
 #   manage rate limits for getting friends, followers
 # auto automation:
-#   loop over a list of users, friend or skip
+#   loop over a list of profiles, friend or skip
+# 
 #
 # Operations: 
 # key word search of users -- DONE
@@ -179,6 +181,16 @@ def getFreshUL(thisUL,thisTouchedSet):
   print "cleaned: "+str(len(cleanUL))
   return cleanUL
 
+# rid users with a null status
+def getRidNullUsers(thisUL): 
+  print "pre-rid: "+str(len(thisUL))
+  for i in range(len(thisUL)):
+      if (ul[i].status==None):
+        cleanUL.remove(thisUL[i])
+      else: continue
+  print "rid: "+str(len(cleanUL))
+  return cleanUL
+
 def printLU(listOfUsers): #print List Users
     print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio" + bcolors.ENDC
     for i in range(len(listOfUsers)):
@@ -195,6 +207,15 @@ def printLUfProf(thisLP): #print list of auto-avatar user profiles
           print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(prof)
           continue
         print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(prof,thisLP[prof]['tweets'],thisLP[prof]['followers'],thisLP[prof]['friends'],thisLP[prof]['pratio'],thisLP[prof]['sratio'],thisLP[prof]['friendScore'])
+
+def printSLUfProf(thisLP, thisSortedL): #print list of auto-avatar user profiles
+    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio\tfriendScore" + bcolors.ENDC
+    for i in range(len(thisSortedL)):
+#        print i
+        if thisLP[thisSortedL[i]]['friends'] == 0 or thisLP[thisSortedL[i]]['followers'] == 0:
+          print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(thisSortedL[i])
+          continue
+        print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(thisSortedL[i],thisLP[thisSortedL[i]]['tweets'],thisLP[thisSortedL[i]]['followers'],thisLP[thisSortedL[i]]['friends'],thisLP[thisSortedL[i]]['pratio'],thisLP[thisSortedL[i]]['sratio'],thisLP[thisSortedL[i]]['friendScore'])
 
 ###############################################
 #
@@ -223,31 +244,29 @@ def sortLU(thisULUlist,thisSortType='p'):
     sortedLU=True
   return ulS
 
-
-
 def sortPs(thisPL):
-#print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(prof,thisLP[prof]['tweets'],thisLP[prof]['followers'],thisLP[prof]['fri    ends'],thisLP[prof]['pratio'],thisLP[prof]['sratio'],thisLP[prof]['friendScore'])
+# listOfProfilesDict(key=screen_name, profileDict(keys=attribs, attribsValues)))
   sortedLU=False
   while not sortedLU:
     thisSortType=raw_input("Sort options: screen_(n)ame, (t)weets, (f)ollowers, (fr)iends, (p)op-ratio, (s)pam-ratio, fr(i)endScore: ")
     if thisSortType=="f":
-      ulS=sorted(thisPL, key=lambda myusers: myusers['followers'], reverse=True) #TODOs convert user object to profile
+      ulS=sorted(p, key=lambda x: p[x]['followers'])
     elif thisSortType=="n":
-      ulS=sorted(thisPL, key=lambda myusers: myusers['screen_name'])
+      ulS=sorted(thisPL, key=lambda x: x, reverse=False)
     elif thisSortType=="s":
-      ulS=sorted(thisPL, key=lambda myusers: myusers.statuses_count/myusers.followers_count, reverse=True)
+      ulS=sorted(p, key=lambda x: p[x]['sratio'])
     elif thisSortType=="t":
-      ulS=sorted(thisPL, key=lambda myusers: myusers.statuses_count, reverse=True)
+      ulS=sorted(p, key=lambda x: p[x]['tweets'])
     elif thisSortType=="fr":
-      ulS=sorted(thisPL, key=lambda myusers: myusers.friends_count, reverse=True)
+      ulS=sorted(p, key=lambda x: p[x]['friends'])
     elif thisSortType=="p":
-      ulS=sorted(thisPL, key=lambda myusers: (myusers.followers_count/myusers.friends_count), reverse=True)
+      ulS=sorted(p, key=lambda x: p[x]['pratio'])
     elif thisSortType=="i":
-      ulS=sorted(thisPL, key=lambda myusers: (myusers.followers_count/myusers.friends_count), reverse=True)
+      ulS=sorted(p, key=lambda x: p[x]['friendScore'])
     else:
       inputErrorHandler(thisSortType,"invalid sort type!")
       continue
-      sortedLU=True
+    sortedLU=True
   return ulS
 
 ###############################################
@@ -260,7 +279,7 @@ def sortPs(thisPL):
 
 def printUser(oneUser):
   if oneUser.friends_count == 0 or  oneUser.followers_count == 0:
-    print "{:14}\t{}\t{}\t{}\t{:6.2f}\t\t{:6.2f}NOFLW and/or NOFRIENDS".format(oneUser.screen_name,oneUser.statuses_count,oneUser.followers_count,oneUser.friends_count)
+    print "{:14}\t{}\t{}\t{} NOFLW and/or NOFRIENDS".format(oneUser.screen_name,oneUser.statuses_count,oneUser.followers_count,oneUser.friends_count)
   print bcolors.HEADER + "Screen_name: " + bcolors.ENDC \
   + "{:14}".format(oneUser.screen_name) + "\nName:{:14}\nDescription: \
   {}\nTweets:\t{}\tFollowers:\t{}\tFriends:\t{}\n".format(oneUser.name,oneUser.description,oneUser.statuses_count,oneUser.followers_count,oneUser.friends_count) \
@@ -290,6 +309,7 @@ def printUfP(screen_name, oneUserProfile):
   + bcolors.BROWN + "\ttime#Tweets: \t" + bcolors.ENDC \
   + "{:7.2f}".format(oneUserProfile['timeFnumTweets']) \
   + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(oneUserProfile['account_create_datetime'],"id",oneUserProfile['location'],oneUserProfile['verified']) \
+#  + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(oneUserProfile['account_create_datetime'],oneUserProfile['id'],oneUserProfile['location'],oneUserProfile['verified']) \
   + bcolors.WHITE + "friendScore: " + bcolors.ENDC \
   + "{:7}".format(oneUserProfile['friendScore'])
 
@@ -340,7 +360,7 @@ def getFriends(user={}): #get a user's friends from twitter
 #  some_user = api.GetUser(screen_name="Manager_of_it")
 #get list of friends
   try:
-    theseFriends = api.GetFriends(total_count=1000)
+    theseFriends = api.GetFriends(total_count=2000)
   except: 
     callErrorHandler("Get friends failed!")
     theseFriends = {}
@@ -350,7 +370,7 @@ def getFollowers(user={}): #get a user's followers from twitter
 #  some_user = api.GetUser(screen_name="Manager_of_it")
 #get list of followers
   try:
-    theseFollowers = api.GetFollowers(total_count=1500)
+    theseFollowers = api.GetFollowers(total_count=2900)
   except: 
     callErrorHandler("Get followers failed!")
     theseFollowers = {}
@@ -460,15 +480,24 @@ def followUser(fU,id="",screen_name=""):
     return
   print bcolors.BOLD + "Awesome! You are now following: {}\n".format(fU.screen_name) + bcolors.ENDC 
 
-def unfollowUser(unfU,id="",screen_name=""):
-  user_id=unfU.id
-  screen_name=unfU.screen_name
+def unfollowP(unf_screen_name=""):
+  # api.GetSearch(term=q_term, lang=q_lang, since=q_since, until=q_until, count=q_count, max_id=q_max_id)
   try:
-    api.DestroyFriendship(user_id, screen_name)
+    api.DestroyFriendship(screen_name=unf_screen_name)
   except:
     callErrorHandler("Remove friendship failed!")
     return
-  print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unfU.screen_name) + bcolors.ENDC 
+  print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unf_screen_name) + bcolors.ENDC 
+
+def unfollowUser(unfU=None,id="",unf_screen_name=""):
+  if unf_screen_name=="":
+    unf_screen_name=unfU.screen_name
+  try:
+    api.DestroyFriendship(screen_name=unf_screen_name)
+  except:
+    callErrorHandler("Remove friendship failed!")
+    return
+  print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unf_screen_name) + bcolors.ENDC 
 
 ####################
 #
@@ -536,6 +565,57 @@ def inputLastAction():
   print "figure out this last action, stuff\n"
   return
 
+#def printSLUfProf(thisLP, thisSortedL): #print list of auto-avatar user profiles
+#  print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio\tfriendScore" + bcolors.ENDC
+#  for i in range(len(thisSortedL)):
+#            #        print i
+#    if thisLP[thisSortedL[i]]['friends'] == 0 or thisLP[thisSortedL[i]]['followers'] == 0:
+#      print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(thisSortedL[i])
+#      continue
+#    print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(thisSortedL[i],thisLP[thisSortedL[i]]['tweets'],thisLP[thisSortedL[i]]['followers'],thisLP[thisSortedL[i]]['friends'],thisLP[thisSortedL[i]]['pratio'],thisLP[thisSortedL[i]]['sratio'],thisLP[thisSortedL[i]]['friendScore'])
+
+def reviewPs(this_p):
+  thisSortedL=sortPs(this_p)
+  for i in range(len(thisSortedL)):
+    printUfP(thisSortedL[i], this_p[thisSortedL[i]])
+    reviewPsOpt=raw_input("friend list review option: (s)kip, (u)nfollow, (m)ore, e(x)it: ")
+    if reviewPsOpt not in {"s","u","m","x"}:
+      inputErrorHandler(reviewPsOpt, "Invlid Entry.  Try again!")
+    elif reviewPsOpt=='u':
+      unfollowUser(unf_screen_name=prof) # remove user from followers
+      journal(journal_file,prof,reviewPsOpt)
+      storeAction(thisSortedL[i], reviewPsOpt)
+      continue
+    elif reviewPsOpt=='m':
+      print "not implemented, sorry\n"
+#      reviewFriendsMoreAction(this_friendActionUL[i])
+      continue
+    elif reviewPsOpt=='s':
+      print "skip\n"
+      continue
+    else: break #nothing left to do but exit
+  return
+
+#def reviewPs(this_p):
+#  for i,prof in enumerate(this_p):
+#    printUfP(prof, this_p[prof])
+#    reviewPsOpt=raw_input("friend list review option: (s)kip, (u)nfollow, (m)ore, e(x)it: ")
+#    if reviewPsOpt not in {"s","u","m","x"}:
+#      inputErrorHandler(reviewPsOpt, "Invlid Entry.  Try again!")
+#    elif reviewPsOpt=='u':
+#      unfollowUser(unf_screen_name=prof) # remove user from followers
+#      journal(journal_file,prof,reviewPsOpt)
+#      storeAction(prof, reviewPsOpt)
+#      continue
+#    elif reviewPsOpt=='m':
+#      print "not implemented, sorry\n"
+##      reviewFriendsMoreAction(this_friendActionUL[i])
+#      continue
+#    elif reviewPsOpt=='s':
+#      print "skip\n"
+#      continue
+#    else: break #nothing left to do but exit
+#  return
 
 def reviewFriendsAction(this_friendActionUL):
   for i in range(len(this_friendActionUL)):
@@ -606,7 +686,7 @@ def getUserTweets(g_utl,gUTcount=10):
 #
 #
 #
-def getPs():
+def getPs(q_term="devops", q_count="20"):
   ul=getUfQ()
   tl=getTL(ul)
   pLims=getProfileLimitsPoints()
@@ -616,7 +696,7 @@ def getPs():
 
 def getProfileDict(userObject, userStatusObject, pLims, pLists):
   thisProfileDict=buildProfileDict(userObject, userStatusObject)
-  thisFriendScore=computeFriendScore(pLims, pLists, thisProfileDict)
+  thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
   thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
   return thisProfileDict
 
@@ -624,9 +704,9 @@ def getProfileDict(userObject, userStatusObject, pLims, pLists):
 def getListProfileDicts(userList, statusList, pLims, pLists):
   thisListProfiles={}
   for i in range(len(userList)):
-    print i
+    print i, "screen_name: ",  userList[i].name
     thisProfileDict=buildProfileDict(userList[i], statusList[i])
-    thisFriendScore=computeFriendScore(pLims, pLists, thisProfileDict)
+    thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
     thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
     thisListProfiles[userList[i].screen_name]=thisProfileDict
   return thisListProfiles
@@ -642,6 +722,8 @@ def getListProfileDicts(userList, statusList, pLims, pLists):
 def buildProfileDict(userObject, userStatusObject):
   thisProfileDict={
   # 1st order profile attributes
+      'id': userObject.id,
+      'screen_name': userObject.screen_name,
       'tweets': userObject.statuses_count,
       'followers': userObject.followers_count,
       'friends': userObject.friends_count,
@@ -658,13 +740,18 @@ def buildProfileDict(userObject, userStatusObject):
       'location': userObject.location,
       }
   # 2nd order profile attributes
-  thisProfileDict['daysOld']=(datetime.datetime.now()-thisProfileDict['account_create_datetime']).days 
+  thisProfileDict['daysOld']=getDaysOld(thisProfileDict['account_create_datetime'])
   thisProfileDict['freqRatio']=userObject.statuses_count/float(thisProfileDict['daysOld'])
   thisProfileDict['daysLast']=(datetime.datetime.now()-thisProfileDict['last_status_datetime']).days
   thisProfileDict['timeFnumTweets']=getTimeFnumTweets(thisProfileDict['offset_status_datetime'])
   thisProfileDict['volumeRatio']=len(userStatusObject)/float(thisProfileDict['timeFnumTweets'])
   thisProfileDict['retweetRatio']=float(thisProfileDict['retweets'])/len(userStatusObject)
   return thisProfileDict
+
+def getDaysOld(thisAcdt):
+  if thisAcdt <= 0:
+    return 1
+  else: return (datetime.datetime.now()-thisAcdt).days 
 
 def getTimeFnumTweets(offsetDT):
   thisTimeFnumTweets=(datetime.datetime.now()-offsetDT).days
@@ -675,16 +762,16 @@ def getTimeFnumTweets(offsetDT):
 def getRetweets(statusObject):
   thisNumRetweets=0
   for i in range(len(statusObject)):
-    if not re.match('^RT', statusObject[i].text)
+    if not re.match('^RT', statusObject[i].text):
       thisNumRetweets=thisNumRetweets+1
       continue
   return thisNumRetweets
 
-def getPicState(userObject): #TODOs: define
-  if not re.match('.*default.*', userObject.profile_image_url)
+def getPicState(thisProfileImage): #TODOs: define
+  if re.match('.*default.*', thisProfileImage):
+    thisPicState=False
+  else: 
     thisPicState=True
-    print "now you see it... no bio pic.\n"
-  else: thisPicState=False
   return thisPicState
 
 def getBioState(description):
@@ -753,59 +840,89 @@ def getProfileLimitsPoints():
       'activeMin': (2,-10),
       'timeFnumTweetsMax': (45,-20), #days
       'timeFnumTweetsMin': (5,-50), #days
-      'picBool': (0,-50),
-      'bioBool': (0,-20),
-      'verified': (0,10)
+      'picBool': ("Boolean",-50),
+      'bioBool': ("Boolean",-20),
+      'verified': ("Boolean",10)
       }
   return thisLimitsPointsList
 
+def printShowWork(limitName, thisLims,  runFriendScore):
+  print "item: ", limitName, ",\tLimit: ", thisLims[limitName][0], ",\tPoints: ", thisLims[limitName][1], ",\tScore: ", runFriendScore
+  return
 
-def computeFriendScore(pLims, pLists, profileDict):
+q_term="+q_term+"
+
+def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   thisFriendScore=100
+  if showWork: print "Friend score init: ", thisFriendScore
   if profileDict['friends'] < pLims['friendMin'][0]:
     thisFriendScore=thisFriendScore+pLims['friendMin'][1]
+    if showWork: printShowWork('friendMin', pLims, thisFriendScore)
   if profileDict['followers'] < pLims['followersMin'][0]:
     thisFriendScore=thisFriendScore+pLims['followersMin'][1]
+    if showWork: printShowWork('followersMin', pLims, thisFriendScore)
   if profileDict['pratio'] > pLims['pratioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['pratioMax'][1]
+    if showWork: printShowWork('pratioMax', pLims, thisFriendScore)
   if profileDict['sratio'] > pLims['sratioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['sratioMax'][1]
+    if showWork: printShowWork('sratioMax', pLims, thisFriendScore)
   if profileDict['retweetRatio'] > pLims['retweetRatioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['retweetRatioMax'][1]
+    if showWork: printShowWork('retweetRatioMax', pLims, thisFriendScore)
   if profileDict['tweets'] > pLims['tweetsMax'][0]:
     thisFriendScore=thisFriendScore+pLims['tweetsMax'][1]
+    if showWork: printShowWork('tweetsMax', pLims, thisFriendScore)
   if profileDict['tweets'] < pLims['tweetsMin'][0]:
     thisFriendScore=thisFriendScore+pLims['tweetsMin'][1]
+    if showWork: printShowWork('tweetsMin', pLims, thisFriendScore)
   if profileDict['volumeRatio'] <  pLims['volumeRatioMin'][0]:
     thisFriendScore=thisFriendScore+pLims['volumeRatioMin'][1]
+    if showWork: printShowWork('volumeRatioMin', pLims, thisFriendScore)
   if profileDict['volumeRatio'] >  pLims['volumeRatioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
+    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
   if profileDict['freqRatio'] > pLims['freqRatioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['freqRatioMax'][1]
+    if showWork: printShowWork('freqRatioMax', pLims, thisFriendScore)
   if profileDict['volumeRatio'] > pLims['volumeRatioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
+    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
   if profileDict['daysOld'] > pLims['accountAgeMax'][0]:
     thisFriendScore=thisFriendScore+pLims['accountAgeMax'][1]
+    if showWork: printShowWork('accountAgeMax', pLims, thisFriendScore)
   if profileDict['daysOld'] < pLims['accountAgeMin'][0]:
     thisFriendScore=thisFriendScore+pLims['accountAgeMin'][1]
+    if showWork: printShowWork('accountAgeMin', pLims, thisFriendScore)
   if profileDict['daysLast'] > pLims['activeMax'][0]:
     thisFriendScore=thisFriendScore+pLims['activeMax'][1]
+    if showWork: printShowWork('activeMax', pLims, thisFriendScore)
   if profileDict['daysLast'] > pLims['activeMin'][0]:
     thisFriendScore=thisFriendScore+pLims['activeMin'][1]
+    if showWork: printShowWork('activeMin', pLims, thisFriendScore)
   if profileDict['timeFnumTweets'] > pLims['timeFnumTweetsMax'][0]:
     thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMax'][1]
+    if showWork: printShowWork('timeFnumTweetsMax', pLims, thisFriendScore)
   if profileDict['timeFnumTweets'] < pLims['timeFnumTweetsMin'][0]:
     thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMin'][1]
+    if showWork: printShowWork('timeFnumTweetsMin', pLims, thisFriendScore)
 #  if profileDict['screen_name'] in pLists['screen_namesNot']:
 #    thisFriendScore=thisFriendScore-99
+#    if showWork: 
+#      printShowWork(pLims['friendMin'], thisFriendScore)
 #  if profileDict['location'] in pLists['locationIn']:
 #    thisFriendScore=thisFriendScore+20
+#    if showWork: 
+#      printShowWork(pLims['friendMin'], thisFriendScore)
   if not profileDict['picBool']:
     thisFriendScore=thisFriendScore+pLims['picBool'][1]
+    if showWork: printShowWork('picBool', pLims, thisFriendScore)
   if not profileDict['bioBool']:
     thisFriendScore=thisFriendScore+pLims['bioBool'][1]
+    if showWork: printShowWork('bioBool', pLims, thisFriendScore)
   if profileDict['verified']:
     thisFriendScore=thisFriendScore+pLims['verified'][1]
+    if showWork: printShowWork('verified', pLims, thisFriendScore)
   return thisFriendScore
 
 # rulesList: 
@@ -857,7 +974,7 @@ class bcolors:
       OKBLUE = '\033[94m'
       OKGREEN = '\033[92m'
       BROWN = '\033[33m'
-      WHITE = '\037[33m'
+      WHITE = '\033[37m'
       WARNING = '\033[93m'
       FAIL = '\033[91m'
       ENDC = '\033[0m'
@@ -955,6 +1072,7 @@ def goMain():
           ul=convertSLtoUL(r) #convert status to users
           ul=getULU(ul) #clean: remove dup users
           ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
+          ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
           tl=getTL(ul) 
           pLims=getProfileLimitsPoints()
           pLists=getProfileLists()
