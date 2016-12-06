@@ -15,8 +15,8 @@
 #   score screen_name in list
 #   score location in list
 #
-#   review profiles, attribs and scores
-#   sort profiles
+#   review profiles, attribs and scores #DONE
+#   sort profiles #DONE
 #
 #
 # file mangement:
@@ -183,16 +183,17 @@ def getFreshUL(thisUL,thisTouchedSet):
 
 # rid users with a null status
 def getRidNullUsers(thisUL): 
+  cleanUL=list(thisUL)
   print "pre-rid: "+str(len(thisUL))
   for i in range(len(thisUL)):
-      if (ul[i].status==None):
+      if (thisUL[i].status==None):
         cleanUL.remove(thisUL[i])
       else: continue
   print "rid: "+str(len(cleanUL))
   return cleanUL
 
 def printLU(listOfUsers): #print List Users
-    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio" + bcolors.ENDC
+    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio" + bcolors.ENDC
     for i in range(len(listOfUsers)):
         if listOfUsers[i].friends_count == 0 or listOfUsers[i].followers_count == 0:
             print "{:14}\t{}\t{}\t{}\tNOFOLWERS AND\OR FRIENDS".format(listOfUsers[i].screen_name,listOfUsers[i].statuses_count,listOfUsers[i].friends_count,listOfUsers[i].followers_count)
@@ -201,7 +202,7 @@ def printLU(listOfUsers): #print List Users
 
 
 def printLUfProf(thisLP): #print list of auto-avatar user profiles
-    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio\tfriendScore" + bcolors.ENDC
+    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio\tfriendScore" + bcolors.ENDC
     for i,prof in enumerate(thisLP):
         if thisLP[prof]['friends'] == 0 or thisLP[prof]['followers'] == 0:
           print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(prof)
@@ -209,7 +210,7 @@ def printLUfProf(thisLP): #print list of auto-avatar user profiles
         print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(prof,thisLP[prof]['tweets'],thisLP[prof]['followers'],thisLP[prof]['friends'],thisLP[prof]['pratio'],thisLP[prof]['sratio'],thisLP[prof]['friendScore'])
 
 def printSLUfProf(thisLP, thisSortedL): #print list of auto-avatar user profiles
-    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tspam-ratio\tfriendScore" + bcolors.ENDC
+    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio\tfriendScore" + bcolors.ENDC
     for i in range(len(thisSortedL)):
 #        print i
         if thisLP[thisSortedL[i]]['friends'] == 0 or thisLP[thisSortedL[i]]['followers'] == 0:
@@ -250,19 +251,19 @@ def sortPs(thisPL):
   while not sortedLU:
     thisSortType=raw_input("Sort options: screen_(n)ame, (t)weets, (f)ollowers, (fr)iends, (p)op-ratio, (s)pam-ratio, fr(i)endScore: ")
     if thisSortType=="f":
-      ulS=sorted(p, key=lambda x: p[x]['followers'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['followers'])
     elif thisSortType=="n":
       ulS=sorted(thisPL, key=lambda x: x, reverse=False)
     elif thisSortType=="s":
-      ulS=sorted(p, key=lambda x: p[x]['sratio'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['sratio'])
     elif thisSortType=="t":
-      ulS=sorted(p, key=lambda x: p[x]['tweets'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['tweets'])
     elif thisSortType=="fr":
-      ulS=sorted(p, key=lambda x: p[x]['friends'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['friends'])
     elif thisSortType=="p":
-      ulS=sorted(p, key=lambda x: p[x]['pratio'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['pratio'])
     elif thisSortType=="i":
-      ulS=sorted(p, key=lambda x: p[x]['friendScore'])
+      ulS=sorted(thisPL, key=lambda x: thisPL[x]['friendScore'])
     else:
       inputErrorHandler(thisSortType,"invalid sort type!")
       continue
@@ -274,7 +275,7 @@ def sortPs(thisPL):
 #screen_name:
 #   'description'
 #tweets: #followers: #friends:
-#p-ratio: #s-ratio:
+#pop-ratio: #s-ratio:
 #   'created_at' #   'id' #   'location' #   'verified'
 
 def printUser(oneUser):
@@ -283,9 +284,9 @@ def printUser(oneUser):
   print bcolors.HEADER + "Screen_name: " + bcolors.ENDC \
   + "{:14}".format(oneUser.screen_name) + "\nName:{:14}\nDescription: \
   {}\nTweets:\t{}\tFollowers:\t{}\tFriends:\t{}\n".format(oneUser.name,oneUser.description,oneUser.statuses_count,oneUser.followers_count,oneUser.friends_count) \
-  + bcolors.OKBLUE + "p-ratio: " + bcolors.ENDC \
+  + bcolors.OKBLUE + "pop-ratio: " + bcolors.ENDC \
   + "{:7.2f}".format(round(float(oneUser.followers_count)/oneUser.friends_count,3)) \
-  + bcolors.OKBLUE + "\ts-ratio: " + bcolors.ENDC \
+  + bcolors.OKBLUE + "\tchorus-ratio: " + bcolors.ENDC \
   + "{:7.2f}".format(round(float(oneUser.statuses_count)/oneUser.followers_count,3)) \
   + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(time.strftime('%Y-%m-%d %H:%M', time.strptime(oneUser.created_at,'%a %b %d %H:%M:%S +0000 %Y')),oneUser.id,oneUser.location,oneUser.verified)
 #  ts = time.strftime('%Y-%m-%d %H:%M', time.strptime(tweetL[0].created_at,'%a %b %d %H:%M:%S +0000 %Y'))
@@ -296,21 +297,13 @@ def printUfP(screen_name, oneUserProfile):
   print bcolors.HEADER + "Screen_name: " + bcolors.ENDC \
   + "{:14}".format(screen_name) + "\nName:{:14}\nDescription: \
   {}\nTweets:\t{}\tFollowers:\t{}\tFriends:\t{}\n".format(screen_name,oneUserProfile['description'],oneUserProfile['tweets'],oneUserProfile['followers'],oneUserProfile['friends']) \
-  + bcolors.BROWN + "p-ratio: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['pratio']) \
-  + bcolors.BROWN + "\ts-ratio: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['sratio']) \
-  + bcolors.BROWN + "\nfreqRatio: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['freqRatio']) \
-  + bcolors.BROWN + "\tvolumeRatio: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['volumeRatio']) \
-  + bcolors.BROWN + "\nretweetRatio: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['retweetRatio']) \
-  + bcolors.BROWN + "\ttime#Tweets: \t" + bcolors.ENDC \
-  + "{:7.2f}".format(oneUserProfile['timeFnumTweets']) \
-  + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(oneUserProfile['account_create_datetime'],"id",oneUserProfile['location'],oneUserProfile['verified']) \
-#  + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(oneUserProfile['account_create_datetime'],oneUserProfile['id'],oneUserProfile['location'],oneUserProfile['verified']) \
-  + bcolors.WHITE + "friendScore: " + bcolors.ENDC \
+  + bcolors.BROWN + "pop-ratio: \t" + bcolors.ENDC  + "{:7.2f}".format(oneUserProfile['pratio']) \
+  + bcolors.BROWN + "\tchorus-ratio: \t" + bcolors.ENDC  + "{:7.1f}".format(oneUserProfile['sratio']) \
+  + bcolors.BROWN + "\ntweets/day: \t" + bcolors.ENDC  + "{:7.2f}".format(oneUserProfile['freqRatio']) \
+  + bcolors.BROWN + "\tVolume: \t" + bcolors.ENDC  + "{:7}".format(oneUserProfile['volumeRatio']) \
+  + bcolors.BROWN + "\nretweetScale: \t" + bcolors.ENDC  + "{:7.1f}".format(oneUserProfile['retweetRatio']) \
+  + bcolors.BROWN + "\tdays10tweets: \t" + bcolors.ENDC  + "{:7}".format(oneUserProfile['timeFnumTweets']) \
+  + "\ncreatead: {}\tid:{}\tlocation: {}\tverified: {}\n".format(oneUserProfile['account_create_datetime'],oneUserProfile['id'],oneUserProfile['location'],oneUserProfile['verified']) + bcolors.WHITE + "friendScore: " + bcolors.ENDC \
   + "{:7}".format(oneUserProfile['friendScore'])
 
 ###############################################
@@ -332,6 +325,7 @@ def journal(j_fileHandle, userID, j_action):
   # capture uid and action (suggested, followed, unfollowed) and write to file
   if j_action in {"a","f","u","s"}:
     j_fileHandle.write(str(datetime.datetime.now()) + "," +  userID + "," + j_action + "\n")
+    j_fileHandle.flush()
     return
   else: inputErrorHandler(j_action, "Cannot log. Invalid journal action!")
 
@@ -470,15 +464,15 @@ def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.d
 # adding/removing followers 
 #
 
-def followUser(fU,id="",screen_name=""):
-  user_id=fU.id
-  screen_name=fU.screen_name
+def followUser(fU=None,id="",f_screen_name=""):
+  if f_screen_name=="":
+    f_screen_name=fU.screen_name
   try: 
-    api.CreateFriendship(user_id, screen_name, follow=True)
+    api.CreateFriendship(screen_name=f_screen_name, follow=True)
   except:
     callErrorHandler("Create friendship failed!")
     return
-  print bcolors.BOLD + "Awesome! You are now following: {}\n".format(fU.screen_name) + bcolors.ENDC 
+  print bcolors.BOLD + "Awesome! You are now following: {}\n".format(f_screen_name) + bcolors.ENDC 
 
 def unfollowP(unf_screen_name=""):
   # api.GetSearch(term=q_term, lang=q_lang, since=q_since, until=q_until, count=q_count, max_id=q_max_id)
@@ -574,7 +568,7 @@ def inputLastAction():
 #      continue
 #    print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(thisSortedL[i],thisLP[thisSortedL[i]]['tweets'],thisLP[thisSortedL[i]]['followers'],thisLP[thisSortedL[i]]['friends'],thisLP[thisSortedL[i]]['pratio'],thisLP[thisSortedL[i]]['sratio'],thisLP[thisSortedL[i]]['friendScore'])
 
-def reviewPs(this_p):
+def reviewPsU(this_p):
   thisSortedL=sortPs(this_p)
   for i in range(len(thisSortedL)):
     printUfP(thisSortedL[i], this_p[thisSortedL[i]])
@@ -591,6 +585,30 @@ def reviewPs(this_p):
 #      reviewFriendsMoreAction(this_friendActionUL[i])
       continue
     elif reviewPsOpt=='s':
+      print "skip\n"
+      continue
+    else: break #nothing left to do but exit
+  return
+
+def reviewPsF(this_p):
+  thisSortedL=sortPs(this_p)
+  for i in range(len(thisSortedL)):
+    printUfP(thisSortedL[i], this_p[thisSortedL[i]])
+    reviewPsOpt=raw_input("friend list review option: (s)kip, (f)ollow, (m)ore, e(x)it: ")
+    if reviewPsOpt not in {"s","f","m","x"}:
+      inputErrorHandler(reviewPsOpt, "Invlid Entry.  Try again!")
+    elif reviewPsOpt=='f':
+      followUser(f_screen_name=thisSortedL[i]) # remove user from followers
+      journal(journal_file,thisSortedL[i],reviewPsOpt)
+      storeAction(thisSortedL[i], reviewPsOpt)
+      continue
+    elif reviewPsOpt=='m':
+      print "not implemented, sorry\n"
+#      reviewFriendsMoreAction(this_friendActionUL[i])
+      continue
+    elif reviewPsOpt=='s':
+      journal(journal_file,thisSortedL[i],reviewPsOpt)
+      storeAction(thisSortedL[i], reviewPsOpt)
       print "skip\n"
       continue
     else: break #nothing left to do but exit
@@ -686,8 +704,10 @@ def getUserTweets(g_utl,gUTcount=10):
 #
 #
 #
-def getPs(q_term="devops", q_count="20"):
-  ul=getUfQ()
+def getPs(gPq_term="devops", gPq_count="20"):
+#  125 def getUfQ(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=20, q_max_id=99999999     9999999999):
+  # q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=9999999999     99999999):
+  ul=getUfQ(q_term=gPq_term, q_count=gPq_count)
   tl=getTL(ul)
   pLims=getProfileLimitsPoints()
   pLists=getProfileLists()
@@ -704,7 +724,7 @@ def getProfileDict(userObject, userStatusObject, pLims, pLists):
 def getListProfileDicts(userList, statusList, pLims, pLists):
   thisListProfiles={}
   for i in range(len(userList)):
-    print i, "screen_name: ",  userList[i].name
+    print i, "screen_name: ",  userList[i].screen_name
     thisProfileDict=buildProfileDict(userList[i], statusList[i])
     thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
     thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
@@ -744,12 +764,12 @@ def buildProfileDict(userObject, userStatusObject):
   thisProfileDict['freqRatio']=userObject.statuses_count/float(thisProfileDict['daysOld'])
   thisProfileDict['daysLast']=(datetime.datetime.now()-thisProfileDict['last_status_datetime']).days
   thisProfileDict['timeFnumTweets']=getTimeFnumTweets(thisProfileDict['offset_status_datetime'])
-  thisProfileDict['volumeRatio']=len(userStatusObject)/float(thisProfileDict['timeFnumTweets'])
-  thisProfileDict['retweetRatio']=float(thisProfileDict['retweets'])/len(userStatusObject)
+  thisProfileDict['volumeRatio']=len(userStatusObject)/thisProfileDict['timeFnumTweets']
+  thisProfileDict['retweetRatio']=(thisProfileDict['retweets'])/float(len(userStatusObject))
   return thisProfileDict
 
 def getDaysOld(thisAcdt):
-  if thisAcdt <= 0:
+  if (datetime.datetime.now()-thisAcdt).days <= 0:
     return 1
   else: return (datetime.datetime.now()-thisAcdt).days 
 
@@ -814,8 +834,8 @@ def storeFriendScore(thisProfileDict, thisScore):
 #
 def getProfileLists():
   thisProfileLists = {
-      'screen_namesNot': ['job', 'anon', 'bot'],
-      'locationIn': ['RI', 'CA', 'MA']
+      'screen_namesNot': ['tmj', 'job', 'anon', 'bot'],
+      'locationIn': ['Cambrige', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
       }
   return thisProfileLists
 
@@ -842,15 +862,15 @@ def getProfileLimitsPoints():
       'timeFnumTweetsMin': (5,-50), #days
       'picBool': ("Boolean",-50),
       'bioBool': ("Boolean",-20),
-      'verified': ("Boolean",10)
+      'verified': ("Boolean",10),
+      'locationBool': ("Boolean",20),
+      'screen_nameBool': ("Boolean",-99)
       }
   return thisLimitsPointsList
 
 def printShowWork(limitName, thisLims,  runFriendScore):
   print "item: ", limitName, ",\tLimit: ", thisLims[limitName][0], ",\tPoints: ", thisLims[limitName][1], ",\tScore: ", runFriendScore
   return
-
-q_term="+q_term+"
 
 def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   thisFriendScore=100
@@ -906,14 +926,12 @@ def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   if profileDict['timeFnumTweets'] < pLims['timeFnumTweetsMin'][0]:
     thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMin'][1]
     if showWork: printShowWork('timeFnumTweetsMin', pLims, thisFriendScore)
-#  if profileDict['screen_name'] in pLists['screen_namesNot']:
-#    thisFriendScore=thisFriendScore-99
-#    if showWork: 
-#      printShowWork(pLims['friendMin'], thisFriendScore)
-#  if profileDict['location'] in pLists['locationIn']:
-#    thisFriendScore=thisFriendScore+20
-#    if showWork: 
-#      printShowWork(pLims['friendMin'], thisFriendScore)
+  if locationIn(profileDict['location'],pLists['locationIn']): #location
+    thisFriendScore=thisFriendScore+pLims['locationBool'][1]
+    if showWork: printShowWork('locationBool', pLims, thisFriendScore)
+  if locationIn(profileDict['screen_name'],pLists['screen_namesNot']): #screen_name
+    thisFriendScore=thisFriendScore+pLims['screen_nameBool'][1]
+    if showWork: printShowWork('screen_nameBool', pLims, thisFriendScore)
   if not profileDict['picBool']:
     thisFriendScore=thisFriendScore+pLims['picBool'][1]
     if showWork: printShowWork('picBool', pLims, thisFriendScore)
@@ -924,6 +942,22 @@ def computeFriendScore(profileDict, pLims, pLists, showWork=True):
     thisFriendScore=thisFriendScore+pLims['verified'][1]
     if showWork: printShowWork('verified', pLims, thisFriendScore)
   return thisFriendScore
+
+def locationIn(thisLocation, thisLocationList):
+  locationInBool=False
+  for i in range(len(thisLocationList)):
+    regex=".*" + thisLocationList[i] + ".*"
+    if re.match(regex, thisLocation, re.IGNORECASE):
+      locationInBool=True
+  return locationInBool
+
+def screen_namesNot(thisScreen_name, thisScreenNameList):
+  screen_nameNotBool=False
+  for i in range(len(thisScreenNameList)):
+    regex=".*" + thisScreenNameList[i] + ".*"
+    if re.match(regex, thisScreen_name, re.IGNORECASE):
+      screenNameBool=True
+  return screen_nameNotBool
 
 # rulesList: 
 #    friends < friendMin: -20
@@ -1072,7 +1106,7 @@ def goMain():
           ul=convertSLtoUL(r) #convert status to users
           ul=getULU(ul) #clean: remove dup users
           ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
-          ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
+#          ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
           tl=getTL(ul) 
           pLims=getProfileLimitsPoints()
           pLists=getProfileLists()
@@ -1112,7 +1146,8 @@ def goMain():
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you begin to follow!\n" + bcolors.ENDC
       else:
-        reviewUL(ul)
+        reviewPsF(listProfs)
+#        reviewUL(ul)
     elif thisTodo == "s":
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you try to sort!\n" + bcolors.ENDC
@@ -1123,7 +1158,8 @@ def goMain():
       print bcolors.BOLD + bcolors.HEADER + "How's that?\n" + bcolors.ENDC
       exit()
     elif thisTodo == "u":
-      reviewFriends(followingUL,followersSet,notFollowingBackSet)
+      reviewPsU(listProfs)
+#      reviewFriends(followingUL,followersSet,notFollowingBackSet)
     else:
       inputErrorHandler(thisTodo,"Try again!") 
     thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow or (q)uit: ")
