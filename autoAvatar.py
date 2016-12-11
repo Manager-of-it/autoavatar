@@ -456,7 +456,7 @@ def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.d
     callErrorHandler("Get search failed!")
     my_results = [] #null
     return my_results
-  print "len: ",len(my_results)
+#  print "len: ",len(my_results)
   return my_results
 
 #############
@@ -835,7 +835,7 @@ def storeFriendScore(thisProfileDict, thisScore):
 def getProfileLists():
   thisProfileLists = {
       'screen_namesNot': ['tmj', 'job', 'anon', 'bot'],
-      'locationIn': ['Cambrige', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
+      'locationIn': ['Cambridge', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
       }
   return thisProfileLists
 
@@ -844,27 +844,27 @@ def getProfileLists():
 #
 def getProfileLimitsPoints():
   thisLimitsPointsList = {
+      'screen_nameBool': ("Boolean",-99),
       'friendMin': (20,-99),
       'followersMin': (20,-99),
-      'pratioMax': (15,-99),
-      'sratioMax': (15,-99),
-      'retweetRatioMax': (0.9,-90),
-      'tweetsMax': (100000,-40), #100,000,
-      'tweetsMin': (100,-10),
-      'volumeRatioMin': (0,-15),
-      'volumeRatioMax': (50,-75),
-      'freqRatioMax': (10,-20),
-      'accountAgeMax': (1825,30), #5 years in days
-      'accountAgeMin': (90,-10),
+      'pratioMax': (15,-99), #pop-ratio
+      'sratioMax': (15,-99), #chorus-ratio
       'activeMax': (30,-99),
-      'activeMin': (2,-10),
-      'timeFnumTweetsMax': (45,-20), #days
-      'timeFnumTweetsMin': (5,-50), #days
+      'retweetRatioMax': (0.9,-99), #retweetScale
+      'tweetsMax': (200000,-80), #100,000,
+      'volumeRatioMax': (9,-75),
+      'timeFnumTweetsMax': (15,-70), #days
       'picBool': ("Boolean",-50),
-      'bioBool': ("Boolean",-20),
+      'timeFnumTweetsMin': (1,-50), #days
+      'bioBool': ("Boolean",-40),
+      'volumeRatioMin': (0,-15), #tweets/day
+      'freqRatioMax': (10,-20), #tweets/day
+      'accountAgeMin': (90,-10),
+      'tweetsMin': (100,-10),
+      'activeMin': (2,-10),
       'verified': ("Boolean",10),
       'locationBool': ("Boolean",20),
-      'screen_nameBool': ("Boolean",-99)
+      'accountAgeMax': (1825,30) #5 years in days
       }
   return thisLimitsPointsList
 
@@ -905,9 +905,9 @@ def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   if profileDict['freqRatio'] > pLims['freqRatioMax'][0]:
     thisFriendScore=thisFriendScore+pLims['freqRatioMax'][1]
     if showWork: printShowWork('freqRatioMax', pLims, thisFriendScore)
-  if profileDict['volumeRatio'] > pLims['volumeRatioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
-    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
+#  if profileDict['volumeRatio'] > pLims['volumeRatioMax'][0]:
+#    thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
+#    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
   if profileDict['daysOld'] > pLims['accountAgeMax'][0]:
     thisFriendScore=thisFriendScore+pLims['accountAgeMax'][1]
     if showWork: printShowWork('accountAgeMax', pLims, thisFriendScore)
@@ -926,10 +926,10 @@ def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   if profileDict['timeFnumTweets'] < pLims['timeFnumTweetsMin'][0]:
     thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMin'][1]
     if showWork: printShowWork('timeFnumTweetsMin', pLims, thisFriendScore)
-  if locationIn(profileDict['location'],pLists['locationIn']): #location
+  if listBool(profileDict['location'],pLists['locationIn']): #location
     thisFriendScore=thisFriendScore+pLims['locationBool'][1]
     if showWork: printShowWork('locationBool', pLims, thisFriendScore)
-  if locationIn(profileDict['screen_name'],pLists['screen_namesNot']): #screen_name
+  if listBool(profileDict['screen_name'],pLists['screen_namesNot']): #screen_name
     thisFriendScore=thisFriendScore+pLims['screen_nameBool'][1]
     if showWork: printShowWork('screen_nameBool', pLims, thisFriendScore)
   if not profileDict['picBool']:
@@ -942,6 +942,14 @@ def computeFriendScore(profileDict, pLims, pLists, showWork=True):
     thisFriendScore=thisFriendScore+pLims['verified'][1]
     if showWork: printShowWork('verified', pLims, thisFriendScore)
   return thisFriendScore
+
+def listBool(thisAttrib, thisList):
+  listBool=False
+  for i in range(len(thisList)):
+    regex=".*" + thisList[i] + ".*"
+    if re.match(regex, thisAttrib, re.IGNORECASE):
+      listBool=True
+  return listBool
 
 def locationIn(thisLocation, thisLocationList):
   locationInBool=False
@@ -1099,6 +1107,7 @@ def goMain():
         if not searchOrChange=="c":
           if not searchOrChange=="":
             q_term=searchOrChange
+            print "search: ", searchOrChange
             q_max_id=999999999999999999 #reset max_id for new search query
           print "search: q100(q_term="+q_term+",q_lang="+q_lang+",q_since="+q_since+",q_until="+q_until+",q_count="+str(q_count)+",q_max_id="+str(q_max_id)+")"
           r=q100(q_term,q_lang,q_since,q_until,q_count,q_max_id)
@@ -1147,13 +1156,14 @@ def goMain():
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you begin to follow!\n" + bcolors.ENDC
       else:
         reviewPsF(listProfs)
-#        reviewUL(ul)
     elif thisTodo == "s":
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you try to sort!\n" + bcolors.ENDC
       else:
-        ul=sortLU(ul)
-        printLU(ul)
+        listProfs=sortPs(listProfs)
+        printLUfProf(listProfs)
+#        ul=sortPs(ul)
+#        printLU(ul)
     elif thisTodo == "q":
       print bcolors.BOLD + bcolors.HEADER + "How's that?\n" + bcolors.ENDC
       exit()
