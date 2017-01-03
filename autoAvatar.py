@@ -12,8 +12,8 @@
 # functional: 
 #   query non-followers by dates ago followed
 #   unFollow by account last activity date
-#   score screen_name in list
-#   score location in list
+#   score screen_name in list -- #DONE
+#   score location in list -- #DONE
 #
 #   review profiles, attribs and scores #DONE
 #   sort profiles #DONE
@@ -25,8 +25,9 @@
 # API management:
 #   manage rate limits for getting friends, followers
 # auto automation:
+#   store list of queries to loop over
 #   loop over a list of profiles, friend or skip
-# 
+#   generate activity report of automation
 #
 # Operations: 
 # key word search of users -- DONE
@@ -77,6 +78,27 @@ import twitter
 
 reload(sys) 
 sys.setdefaultencoding('UTF8') #set default encoding from ascii to UTF8
+
+########################
+#
+# error handling
+#
+#
+def inputErrorHandler(bad_input=None, message=""):
+  print bcolors.FAIL + "Invalid input: {}\tMessage: {}".format(bad_input,message) + bcolors.ENDC
+def callErrorHandler(message=""):
+  print bcolors.FAIL + "Message: {}".format(message) + bcolors.ENDC
+class bcolors:
+      HEADER = '\033[95m'
+      OKBLUE = '\033[94m'
+      OKGREEN = '\033[92m'
+      BROWN = '\033[33m'
+      WHITE = '\033[37m'
+      WARNING = '\033[93m'
+      FAIL = '\033[91m'
+      ENDC = '\033[0m'
+      BOLD = '\033[1m'
+      UNDERLINE = '\033[4m'
 
 #-----------------------------------------------------------------------
 # create twitter API object
@@ -161,7 +183,7 @@ def convertULtoSetSNs(thisUL):
     continue
   return thisSet
 
-def getULU(thisUL):  #get unique list of users
+def getULU(thisUL):  #get unique list of users -- scrub dups
     # order preserving
     uniqueUL = []
     for e in thisUL:
@@ -169,7 +191,7 @@ def getULU(thisUL):  #get unique list of users
              uniqueUL.append(e)
     return uniqueUL
 
-#get unique list of users -- remove already touched users
+#get unexamined list of users -- remove already touched users
 def getFreshUL(thisUL,thisTouchedSet):
   print "pre-cleaned: "+str(len(thisUL))
   cleanUL=list(thisUL)
@@ -201,9 +223,11 @@ def printLU(listOfUsers): #print List Users
         print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}".format(listOfUsers[i].screen_name,listOfUsers[i].statuses_count,listOfUsers[i].followers_count,listOfUsers[i].friends_count,round(float(listOfUsers[i].followers_count)/listOfUsers[i].friends_count,3),round(float(listOfUsers[i].statuses_count)/listOfUsers[i].followers_count,3))
 
 
-def printLUfProf(thisLP): #print list of auto-avatar user profiles
+def printLUfProf(thisLP, debug=False): #print list of auto-avatar user profiles
     print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio\tfriendScore" + bcolors.ENDC
     for i,prof in enumerate(thisLP):
+        if debug==True: print "DEBUG: i, prof: ", i, prof
+        if debug==True: print "DEBUG: type(thisLP)", type(thisLP), "thisLP[prof]: ", thisLP[prof]
         if thisLP[prof]['friends'] == 0 or thisLP[prof]['followers'] == 0:
           print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(prof)
           continue
@@ -245,9 +269,10 @@ def sortLU(thisULUlist,thisSortType='p'):
     sortedLU=True
   return ulS
 
-def sortPs(thisPL):
+def sortPs(thisPL, debug=False):
 # listOfProfilesDict(key=screen_name, profileDict(keys=attribs, attribsValues)))
   sortedLU=False
+  if debug==True: print "DEBUG: sortPs() type(thisPL): ", type(thisPL)
   while not sortedLU:
     thisSortType=raw_input("Sort options: screen_(n)ame, (t)weets, (f)ollowers, (fr)iends, (p)op-ratio, (s)pam-ratio, fr(i)endScore: ")
     if thisSortType=="f":
@@ -268,6 +293,7 @@ def sortPs(thisPL):
       inputErrorHandler(thisSortType,"invalid sort type!")
       continue
     sortedLU=True
+  if debug==True: print "DEBUG: sortPs() type(ulS): ", type(ulS)
   return ulS
 
 ###############################################
@@ -568,7 +594,7 @@ def inputLastAction():
 #      continue
 #    print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(thisSortedL[i],thisLP[thisSortedL[i]]['tweets'],thisLP[thisSortedL[i]]['followers'],thisLP[thisSortedL[i]]['friends'],thisLP[thisSortedL[i]]['pratio'],thisLP[thisSortedL[i]]['sratio'],thisLP[thisSortedL[i]]['friendScore'])
 
-def reviewPsU(this_p):
+def reviewPsU(this_p, this_tl):
   thisSortedL=sortPs(this_p)
   for i in range(len(thisSortedL)):
     printUfP(thisSortedL[i], this_p[thisSortedL[i]])
@@ -590,7 +616,7 @@ def reviewPsU(this_p):
     else: break #nothing left to do but exit
   return
 
-def reviewPsF(this_p):
+def reviewPsF(this_p, this_tl, debug=False):
   thisSortedL=sortPs(this_p)
   for i in range(len(thisSortedL)):
     printUfP(thisSortedL[i], this_p[thisSortedL[i]])
@@ -598,13 +624,15 @@ def reviewPsF(this_p):
     if reviewPsOpt not in {"s","f","m","x"}:
       inputErrorHandler(reviewPsOpt, "Invlid Entry.  Try again!")
     elif reviewPsOpt=='f':
-      followUser(f_screen_name=thisSortedL[i]) # remove user from followers
+      followUser(f_screen_name=thisSortedL[i])
       journal(journal_file,thisSortedL[i],reviewPsOpt)
       storeAction(thisSortedL[i], reviewPsOpt)
       continue
     elif reviewPsOpt=='m':
-      print "not implemented, sorry\n"
-#      reviewFriendsMoreAction(this_friendActionUL[i])
+      if debug==True: print "DEBUG: reviewPsF() type(thisSortedL[i]: ", type(thisSortedL[i]), "\nthis_tl[i]: ", this_tl[i], "\nthis_tl[i][1]", this_tl[i][0].user.screen_name
+      for r in range(len(thisSortedL)):
+        if thisSortedL[i]==this_tl[r][0].user.screen_name:
+          reviewMoreFromP(thisSortedL[i], this_tl[r]) # i is index of thisSortedL in sort order, but this_tl is in retrieved order
       continue
     elif reviewPsOpt=='s':
       journal(journal_file,thisSortedL[i],reviewPsOpt)
@@ -613,6 +641,22 @@ def reviewPsF(this_p):
       continue
     else: break #nothing left to do but exit
   return
+
+def reviewMoreFromP(this_p, this_tl, debug=False):
+  printUserTweets(this_tl)
+  validInput = False
+  while not validInput:
+    actionOpt2=raw_input("(f)ollow, (s)kip: ")
+    if actionOpt2 not in {"f","s"}: 
+      inputErrorHandler(actionOpt2, "Invalid option!")
+    else: validInput = True
+    if actionOpt2=="f":
+      if debug==True: print "DEBUG: reviewMoreFromP() this_p: ", this_p
+      followUser(f_screen_name=this_p) 
+      journal(journal_file,this_p,actionOpt2)
+      storeAction(this_p, actionOpt2)
+  return
+
 
 #def reviewPs(this_p):
 #  for i,prof in enumerate(this_p):
@@ -685,7 +729,8 @@ def printBanner():
 # get and print tweets for a user
 #
 
-def printUserTweets(p_utl):
+def printUserTweets(p_utl, debug=False):
+  if debug==True: print "DEBUG: printUserTweets() len(p_utl):", len(p_utl)
   print "screen_name: {0}".format(p_utl[0].user.screen_name)
   for i in range(len(p_utl)):
     print "Tweet: {0}\tDate: {1}".format(p_utl[i].text,time.strftime('%Y-%m-%d %H:%M', time.strptime(p_utl[i].created_at,'%a %b %d %H:%M:%S +0000 %Y')))
@@ -699,6 +744,15 @@ def getUserTweets(g_utl,gUTcount=10):
     callErrorHandler("Get user timeline failed!")
     return
   return utl
+
+def getUserTweetsFromP(g_screen_name, gUTcount=10):
+  try:
+    utl=api.GetUserTimeline(screen_name=g_screen_name,count=gUTcount)
+  except:
+    callErrorHandler("Get user timeline failed!")
+    return
+  return utl
+
 
 # Profile Management
 #
@@ -721,11 +775,14 @@ def getProfileDict(userObject, userStatusObject, pLims, pLists):
   return thisProfileDict
 
 # profileListDicts=[key=screen_name, profileDict]
-def getListProfileDicts(userList, statusList, pLims, pLists):
+def getListProfileDicts(userList, statusList, pLims, pLists, debug=True):
   thisListProfiles={}
   for i in range(len(userList)):
-    print i, "screen_name: ",  userList[i].screen_name
-    thisProfileDict=buildProfileDict(userList[i], statusList[i])
+    if debug==True: print i, "screen_name: ",  userList[i].screen_name
+    try:
+      thisProfileDict=buildProfileDict(userList[i], statusList[i])
+    except:
+      return thisListProfiles
     thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
     thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
     thisListProfiles[userList[i].screen_name]=thisProfileDict
@@ -782,7 +839,7 @@ def getTimeFnumTweets(offsetDT):
 def getRetweets(statusObject):
   thisNumRetweets=0
   for i in range(len(statusObject)):
-    if not re.match('^RT', statusObject[i].text):
+    if re.match('^RT', statusObject[i].text):
       thisNumRetweets=thisNumRetweets+1
       continue
   return thisNumRetweets
@@ -804,29 +861,6 @@ def storeFriendScore(thisProfileDict, thisScore):
   thisProfileDict['friendScore']=thisScore
   return thisProfileDict
 
-# profileLimits:
-# dict[key=attributeName, value=value]
-#
-#def getProfileLimits():
-#  thisProfileLimits = {
-#      'friendMin': 20,
-#      'followersMin': 20,
-#      'pratioMax': 15,
-#      'sratioMax': 15,
-#      'retweetRatioMax': 0.9,
-#      'tweetsMax': 100000, #100,000
-#      'tweetsMin': 100,
-#      'volumeRatioMin': 0,
-#      'volumeRatioMax': 50,
-#      'freqRatioMax': 10,
-#      'accountAgeMax': 1825, #5 years in days
-#      'accountAgeMin': 90,
-#      'activeMax': 30,
-#      'activeMin': 2,
-#      'timeFnumTweetsMax': 45, #days
-#      'timeFnumTweetsMin': 5 #days
-#      }
-#  return thisProfileLimits
 
 # profileLists:
 # dict[key=listName, value=list]
@@ -834,7 +868,7 @@ def storeFriendScore(thisProfileDict, thisScore):
 #
 def getProfileLists():
   thisProfileLists = {
-      'screen_namesNot': ['tmj', 'job', 'anon', 'bot'],
+      'screen_namesNot': ['tmj', 'job', 'anon', 'bot', 'career'],
       'locationIn': ['Cambridge', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
       }
   return thisProfileLists
@@ -844,24 +878,28 @@ def getProfileLists():
 #
 def getProfileLimitsPoints():
   thisLimitsPointsList = {
-      'screen_nameBool': ("Boolean",-99),
+      #black marks
+      'screen_nameBool': ("Boolean",-109),
       'friendMin': (20,-99),
       'followersMin': (20,-99),
       'pratioMax': (15,-99), #pop-ratio
       'sratioMax': (15,-99), #chorus-ratio
       'activeMax': (30,-99),
       'retweetRatioMax': (0.9,-99), #retweetScale
-      'tweetsMax': (200000,-80), #100,000,
+      #blue marks
+      'tweetsMax': (200000,-80), #200,000,
       'volumeRatioMax': (9,-75),
       'timeFnumTweetsMax': (15,-70), #days
       'picBool': ("Boolean",-50),
       'timeFnumTweetsMin': (1,-50), #days
       'bioBool': ("Boolean",-40),
+      #yellow marks
       'volumeRatioMin': (0,-15), #tweets/day
       'freqRatioMax': (10,-20), #tweets/day
       'accountAgeMin': (90,-10),
       'tweetsMin': (100,-10),
       'activeMin': (2,-10),
+      #gree marks
       'verified': ("Boolean",10),
       'locationBool': ("Boolean",20),
       'accountAgeMax': (1825,30) #5 years in days
@@ -869,12 +907,12 @@ def getProfileLimitsPoints():
   return thisLimitsPointsList
 
 def printShowWork(limitName, thisLims,  runFriendScore):
-  print "item: ", limitName, ",\tLimit: ", thisLims[limitName][0], ",\tPoints: ", thisLims[limitName][1], ",\tScore: ", runFriendScore
+  print "item:", limitName, "\tLimit:", thisLims[limitName][0], "\tPoints:", thisLims[limitName][1], "\tScore:", runFriendScore
   return
 
 def computeFriendScore(profileDict, pLims, pLists, showWork=True):
   thisFriendScore=100
-  if showWork: print "Friend score init: ", thisFriendScore
+  if showWork: print "Friend score init:", thisFriendScore
   if profileDict['friends'] < pLims['friendMin'][0]:
     thisFriendScore=thisFriendScore+pLims['friendMin'][1]
     if showWork: printShowWork('friendMin', pLims, thisFriendScore)
@@ -967,61 +1005,90 @@ def screen_namesNot(thisScreen_name, thisScreenNameList):
       screenNameBool=True
   return screen_nameNotBool
 
-# rulesList: 
-#    friends < friendMin: -20
-#    followers < followersMin: -20
-#    pratio > pratioMax: -99
-#    sratio > sratioMax: -99
+def inputListSearches(debug=False):
+  max_follows=50
+  gettingSearches=True
+  ils_listSearches=[]
+  max_follows=raw_input("input max_follows (default=500): ")
+  if debug==True: print "DEBUG: inputListSearches() ils_listSearches, max_follows: ", ils_listSearches, max_follows
+  while (not max_follows.isdigit()) or max_follows<=0:
+    max_follows=raw_input("Invalid entry! max_follows must be a number >0. Input max_follows: ")
+  while gettingSearches:  
+     gettingConfirm=True
+     ils_search=raw_input("input search term, (s)ubmit or e(x)it: ")
+     if ils_search=="x":
+       return "bogus", 0
+     elif ils_search=="s":
+       print ils_listSearches
+       while gettingConfirm:
+         confirm_list=raw_input("this is the list of searches you have queued, please (c)onfirm or (d)iscard: ")
+         if confirm_list=='c':
+           return ils_listSearches, max_follows
+         elif confirm_list=='d':
+           print "discarding list and starting over."
+           ils_listSearches=[]
+         else:
+           inputErrorHandler(confirm_list, "Invalid option!")
+         gettingConfirm=False
+     elif not ils_search=="":
+       ils_listSearches.append(ils_search)
+     else:
+       inputErrorHandler(ils_search, "Invalid option!")
+  if debug==True: print "DEBUG: inputListSearches() ils_listSearches, max_follows: ", ils_listSearches, max_follows
+  return ils_listSearches, max_follows
 
-#    retweetRatio > retweetRatioMax: -90       --> need query, retweets per last 20 tweets
-#    tweets > tweetsMax: -10
-#    tweets < tweetsMin: -10
-#    volumeRatio <  volumeRatioMin: -15
-#    volumeRatio >  volumeRatioMax: -75
-#    freqRatio > freqRatioMax: -20
-#    volumeRatio > volumeRatioMax: -20
-#    daysOld > accountAgeMax: +20    --> need query, created at time
-#    daysOld < accountAgeMin: -10
-#    daysLast > activeMax: -99    --> need query, last active date
-#    daysLast > activeMin: -10
-#    timeFnumTweets > timeFnumTweetsMax: -20
-#    timeFnumTweets < timeFnumTweetsMin: -50
+def autoAvatar(aa_searchList, aa_max_follows=500, debug=False):
+  if aa_searchList=="bogus":
+    print "No list. Exiting\n"
+    return
+  aa_results={}
+  m_examined=0
+  m_flw=0
+  aa_max_id=999999999999999999
+  for i in range(len(aa_searchList)):
+    if debug==True: print "DEBUG: autoAvatar() aa_searchList[i]: ", aa_searchList[i]
+    print "autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
+    for ii in range(4):
+      q_term=aa_searchList[i]
+      r=q100(q_term, q_max_id=aa_max_id, q_count=100)
+      aa_max_id=getMaxId(r) #get max_id from a list of statuses
+      ul=convertSLtoUL(r) #convert status to users
+      ul=getULU(ul) #clean: remove dup users
+      ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
+      m_examined=m_examined+len(ul)
+      try: 
+        tl=getTL(ul) #get tweets of selected users
+      except:
+        print "that's a mess..."
+        return aa_results
+      pLims=getProfileLimitsPoints()
+      pLists=getProfileLists()
+      listProfs=getListProfileDicts(ul,tl,pLims,pLists)
+      if debug==True: print "DEBUG: autoAvatar() type(listProfs)", type(listProfs)
+      listUsers=sorted(listProfs, key=lambda x: listProfs[x]['friendScore'])
+      if debug==True: print "DEBUG: autoAvatar() listUsers: ", listUsers
+      for r in range(len(listUsers)):
+          if listProfs[listUsers[r]]['friendScore']>0:
+            followUser(f_screen_name=listUsers[r])
+            action_aa='f'
+            m_flw=m_flw+1
+            if debug==True: print "DEBUG: autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
+            if m_flw>=aa_max_follows: break
+          else:
+            action_aa='s'
+          journal(journal_file,listUsers[r],action_aa)
+          storeAction(listUsers[r], action_aa)
+      if debug==True: print "DEBUG: autoAvatar() outside loop - aa_max_follows, m_flw: ",aa_max_follows, m_flw
+    if m_flw>=aa_max_follows: break
+  if debug==True: print "search list length: ", len(aa_searchList), "\tusers examined: ", m_examined, "\tusers followed: ", m_flw
+  return aa_results
 
-#
-#    screen_name in {'job', 'anon' , 'bot'}: -99 --> need query, screen_name
-#    location in {SF, BOS, RI}: +20    --> need query, location
-#    no bio pic: -50              --> need query, bio pic
-#    no bio: -20                  --> bio
-#    verified: +10                --> verified
-
-#    location not USA(optional, if country specified AND NOT "usa" )
-#    language not english: -99 
-#    location unspecified: -10 
+def printAAResults(paa_results):
+  print paa_results
+  return
 
 
 
-########################
-#
-# error handling
-#
-#
-def inputErrorHandler(bad_input=None, message=""):
-  print bcolors.FAIL + "Invalid input: {}\tMessage: {}".format(bad_input,message) + bcolors.ENDC
-
-def callErrorHandler(message=""):
-  print bcolors.FAIL + "Message: {}".format(message) + bcolors.ENDC
-
-class bcolors:
-      HEADER = '\033[95m'
-      OKBLUE = '\033[94m'
-      OKGREEN = '\033[92m'
-      BROWN = '\033[33m'
-      WHITE = '\033[37m'
-      WARNING = '\033[93m'
-      FAIL = '\033[91m'
-      ENDC = '\033[0m'
-      BOLD = '\033[1m'
-      UNDERLINE = '\033[4m'
 
 def showSearchOptions(show_term, show_lang, show_since, show_until, show_count, max_id):
   print "\nCurrent search options:"
@@ -1078,7 +1145,7 @@ print "notFollowngBackSet len: ", len(notFollowingBackSet)
 #
 #
 
-def goMain():
+def goMain(debug=False):
   printBanner()
   print bcolors.HEADER + "Hi, I'm your auto-avatar, bitxh!\n" + bcolors.ENDC
   print "I will help you engage users on twitter.\n\n \
@@ -1087,6 +1154,7 @@ def goMain():
          (s)ort a list of tweeters\n \
          (f)ollow users\n \
          (u)nfollow friends\n \
+         (a)utoAvatar\n \
          (q)uit\n"
   ul=[]
   q_term="devops"
@@ -1116,10 +1184,11 @@ def goMain():
           ul=getULU(ul) #clean: remove dup users
           ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
 #          ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
-          tl=getTL(ul) 
+          tl=getTL(ul) #get tweets of selected users
           pLims=getProfileLimitsPoints()
           pLists=getProfileLists()
           listProfs=getListProfileDicts(ul,tl,pLims,pLists)
+          if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
           printLUfProf(listProfs)  #report
           print "Len, ul:",len(ul)
           searching=True
@@ -1155,12 +1224,13 @@ def goMain():
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you begin to follow!\n" + bcolors.ENDC
       else:
-        reviewPsF(listProfs)
+        reviewPsF(listProfs, tl)
     elif thisTodo == "s":
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you try to sort!\n" + bcolors.ENDC
       else:
-        listProfs=sortPs(listProfs)
+        listProfs=sortPs(listProfs) #returns list, where listProfs is actual a dict
+        if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
         printLUfProf(listProfs)
 #        ul=sortPs(ul)
 #        printLU(ul)
@@ -1168,11 +1238,14 @@ def goMain():
       print bcolors.BOLD + bcolors.HEADER + "How's that?\n" + bcolors.ENDC
       exit()
     elif thisTodo == "u":
-      reviewPsU(listProfs)
+      reviewPsU(listProfs, tl)
 #      reviewFriends(followingUL,followersSet,notFollowingBackSet)
+    elif thisTodo == "a":
+      searchList, limit_follows=inputListSearches()
+      my_results=autoAvatar(aa_searchList=searchList,aa_max_follows=int(limit_follows))
     else:
       inputErrorHandler(thisTodo,"Try again!") 
-    thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow or (q)uit: ")
+    thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow, (a)utoAvatar or (q)uit: ")
 
 def closeFiles():
   journal_file.close()
