@@ -556,8 +556,8 @@ def reviewFriends(thisFriendsUL,thisFriendsSet,thisNotFollowingBackSet):
 def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet):
   friendReviewFilterInput=False
   while not friendReviewFilterInput:
-    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (l)ast status: ")
-    if friendReviewFilterOpt not in {"a","n","l"}:
+    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (c)ountLIFO, (l)ast status: ")
+    if friendReviewFilterOpt not in {"a","n","c","l"}:
       inputErrorHandler(friendReviewFilterOpt, "Try again!")
     elif friendReviewFilterOpt=="a": # review for unfollow all followers
       print "reviewing all friends...\n"
@@ -574,6 +574,39 @@ def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
         else: continue
       reviewFriendsAction(notFBackUL)
       friendReviewFilterInput=True
+    elif friendReviewFilterOpt=="c": #UNFOLLOW COUNT
+      unfollowCount=raw_input("unfollow how many of the latest not following back. unfollowCount= ")
+      while (not unfollowCount.isdigit()) or unfollowCount<=0:
+        max_follows=raw_input("Invalid entry! unfollowCount must be a number >0. Input unfollowCount= ")
+      gettingConfirm=True
+      while gettingConfirm:
+        confirm_list=raw_input("You entered unfollowCount="+str(unfollowCount)+" please (c)onfirm or (d)iscard: ")
+        if confirm_list=='d':
+          print "discarding list and starting over."
+          return
+        if confirm_list=='c':
+          notFBackUL=[]
+          unfollowCount=int(unfollowCount)
+          for i in range(len(thisFriendsRwUL)):
+            if thisFriendsRwUL[i].screen_name in thisNotFollowingBackRwSet:
+              notFBackUL.append(thisFriendsRwUL[i])
+              continue
+            else: continue
+          if len(notFBackUL)<unfollowCount:
+            print "You only have ", len(notFBackUL), "tweeters not following you back. Setting that to unfollowCount."
+            unfollowCount=len(notFBackUL)
+          debug=True
+          if debug==True: print "DEBUG: unfollow loop() notFBackUL:", notFBackUL, "type(notFBackUL): ", type(notFBackUL)
+          for i in range(unfollowCount):
+            if debug==True: print "DEBUG: unfollow loop() i:",i, "type(i): ", type(i)
+            if debug==True: print "DEBUG: unfollow loop() notFBackUL[i]: ", notFBackUL[i]
+            unfollowUser(notFBackUL[i]) # remove user from followers
+            journal(journal_file,notFBackUL[i].screen_name,"u")
+            storeAction(notFBackUL[i].screen_name, "u")
+            continue
+        else:
+          inputErrorHandler(confirm_list, "Invalid option!")
+        gettingConfirm=False
     else: #nothing left but last action
       inputLastAction()
       # make UL with filter by last action
@@ -607,6 +640,12 @@ def reviewPsU(this_p, this_tl):
       storeAction(thisSortedL[i], reviewPsOpt)
       continue
     elif reviewPsOpt=='m':
+      if debug==True: print "DEBUG: reviewPsF() type(thisSortedL[i]: ", type(thisSortedL[i]), "\nthis_tl[i]: ", this_tl[i], "\nthis_tl[i][1]", this_tl[i][0].user.screen_name
+      for r in range(len(thisSortedL)):
+        if thisSortedL[i]==this_tl[r][0].user.screen_name:
+          reviewMoreFromP(thisSortedL[i], this_tl[r]) # i is index of thisSortedL in sort order, but this_tl is in retrieved order
+      continue
+    elif reviewPsOpt=='s':
       print "not implemented, sorry\n"
 #      reviewFriendsMoreAction(this_friendActionUL[i])
       continue
@@ -1037,7 +1076,7 @@ def inputListSearches(debug=False):
   if debug==True: print "DEBUG: inputListSearches() ils_listSearches, max_follows: ", ils_listSearches, max_follows
   return ils_listSearches, max_follows
 
-def autoAvatar(aa_searchList, aa_max_follows=500, debug=False):
+def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
   if aa_searchList=="bogus":
     print "No list. Exiting\n"
     return
@@ -1048,7 +1087,7 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=False):
   for i in range(len(aa_searchList)):
     if debug==True: print "DEBUG: autoAvatar() aa_searchList[i]: ", aa_searchList[i]
     print "autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
-    for ii in range(4):
+    for ii in range(2):
       q_term=aa_searchList[i]
       r=q100(q_term, q_max_id=aa_max_id, q_count=100)
       aa_max_id=getMaxId(r) #get max_id from a list of statuses
@@ -1238,11 +1277,19 @@ def goMain(debug=False):
       print bcolors.BOLD + bcolors.HEADER + "How's that?\n" + bcolors.ENDC
       exit()
     elif thisTodo == "u":
-      reviewPsU(listProfs, tl)
+      reviewFriends(followingUL,followersSet,notFollowingBackSet)
+#      ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
+#      ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
+#      tl=getTL(ul) #get tweets of selected users
+#      pLims=getProfileLimitsPoints()
+#      pLists=getProfileLists()
+#      listProfs=getListProfileDicts(ul,tl,pLims,pLists)
+#      if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
+#      reviewPsU(listProfs, tl)
 #      reviewFriends(followingUL,followersSet,notFollowingBackSet)
     elif thisTodo == "a":
       searchList, limit_follows=inputListSearches()
-      my_results=autoAvatar(aa_searchList=searchList,aa_max_follows=int(limit_follows))
+      my_results=autoAvatar(aa_searchList=searchList,aa_max_follows=int(limit_follows), debug=True)
     else:
       inputErrorHandler(thisTodo,"Try again!") 
     thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow, (a)utoAvatar or (q)uit: ")
@@ -1252,5 +1299,5 @@ def closeFiles():
   suggest_file.close()
   follow_file.close()
     
-goMain()
+goMain(debug=True)
 closeFiles()
