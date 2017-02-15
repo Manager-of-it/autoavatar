@@ -556,8 +556,8 @@ def reviewFriends(thisFriendsUL,thisFriendsSet,thisNotFollowingBackSet):
 def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet):
   friendReviewFilterInput=False
   while not friendReviewFilterInput:
-    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (c)ountLIFO, (l)ast status: ")
-    if friendReviewFilterOpt not in {"a","n","c","l"}:
+    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (c)ountLIFO, (l)ast status, e(x)it:: ")
+    if friendReviewFilterOpt not in {"a","n","c","l","x"}:
       inputErrorHandler(friendReviewFilterOpt, "Try again!")
     elif friendReviewFilterOpt=="a": # review for unfollow all followers
       print "reviewing all friends...\n"
@@ -607,11 +607,13 @@ def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
         else:
           inputErrorHandler(confirm_list, "Invalid option!")
         gettingConfirm=False
-    else: #nothing left but last action
+    elif friendReviewFilterOpt=="l":  #last status
       inputLastAction()
       # make UL with filter by last action
       # review lastActionFilterUL
       friendReviewFilterInput=True
+    elif friendReviewFilterOpt=="x": #exit
+      break
   return 
 
 def inputLastAction():
@@ -1083,11 +1085,12 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
   aa_results={}
   m_examined=0
   m_flw=0
-  aa_max_id=999999999999999999
   for i in range(len(aa_searchList)):
     if debug==True: print "DEBUG: autoAvatar() aa_searchList[i]: ", aa_searchList[i]
     print "autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
-    for ii in range(2):
+    aa_max_id=999999999999999999
+    for ii in range(3):
+      if m_flw>=aa_max_follows: break
       q_term=aa_searchList[i]
       r=q100(q_term, q_max_id=aa_max_id, q_count=100)
       aa_max_id=getMaxId(r) #get max_id from a list of statuses
