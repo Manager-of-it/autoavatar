@@ -553,10 +553,37 @@ def reviewFriends(thisFriendsUL,thisFriendsSet,thisNotFollowingBackSet):
     else: break #nothing left to do but exit
   return
 
+def unfollowUserCount(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet, unfollowCount):
+  notFBackUL=[]
+  unfollowCount=int(unfollowCount)
+  for i in range(len(thisFriendsRwUL)):
+    if thisFriendsRwUL[i].screen_name in thisNotFollowingBackRwSet:
+      notFBackUL.append(thisFriendsRwUL[i])
+      continue
+    else: continue
+  if len(notFBackUL)<unfollowCount:
+    print "You only have ", len(notFBackUL), "tweeters not following you back. Setting that to unfollowCount."
+    unfollowCount=len(notFBackUL)
+  debug=True
+  if debug==True: print "DEBUG: unfollow loop() notFBackUL:", notFBackUL, "type(notFBackUL): ", type(notFBackUL)
+  if debug==True: print "DEBUG: unfollow loop() untouchedSet: ", untouchedSet
+  for i in range(unfollowCount):
+    if debug==True: print "DEBUG: unfollow loop() i:",i, "type(i): ", type(i)
+    if debug==True: print "DEBUG: unfollow loop() notFBackUL[i].screen_name: ", notFBackUL[i].screen_name
+    if debug==True: print "DEBUG: unfollow loop() len(untouchedSet): ", len(untouchedSet)
+#            if debug==True: print "DEBUG: unfollow loop() untouchedSet: ", untouchedSet
+    if notFBackUL[i].screen_name not in untouchedSet:
+      unfollowUser(notFBackUL[i]) # remove user from followers
+      journal(journal_file,notFBackUL[i].screen_name,"u")
+      storeAction(notFBackUL[i].screen_name, "u")
+      continue
+    else: 
+      print bcolors.UNDERLINE + "You have followed: {}. Not Touching!\n".format(notFBackUL[i].screen_name) + bcolors.ENDC
+
 def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet):
   friendReviewFilterInput=False
   while not friendReviewFilterInput:
-    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (c)ountLIFO, (l)ast status, e(x)it:: ")
+    friendReviewFilterOpt=raw_input("review which list of followers: (a)ll, (n)ot following back, (c)ountLIFO, (l)ast status, e(x)it: ")
     if friendReviewFilterOpt not in {"a","n","c","l","x"}:
       inputErrorHandler(friendReviewFilterOpt, "Try again!")
     elif friendReviewFilterOpt=="a": # review for unfollow all followers
@@ -585,25 +612,7 @@ def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
           print "discarding list and starting over."
           return
         if confirm_list=='c':
-          notFBackUL=[]
-          unfollowCount=int(unfollowCount)
-          for i in range(len(thisFriendsRwUL)):
-            if thisFriendsRwUL[i].screen_name in thisNotFollowingBackRwSet:
-              notFBackUL.append(thisFriendsRwUL[i])
-              continue
-            else: continue
-          if len(notFBackUL)<unfollowCount:
-            print "You only have ", len(notFBackUL), "tweeters not following you back. Setting that to unfollowCount."
-            unfollowCount=len(notFBackUL)
-          debug=True
-          if debug==True: print "DEBUG: unfollow loop() notFBackUL:", notFBackUL, "type(notFBackUL): ", type(notFBackUL)
-          for i in range(unfollowCount):
-            if debug==True: print "DEBUG: unfollow loop() i:",i, "type(i): ", type(i)
-            if debug==True: print "DEBUG: unfollow loop() notFBackUL[i]: ", notFBackUL[i]
-            unfollowUser(notFBackUL[i]) # remove user from followers
-            journal(journal_file,notFBackUL[i].screen_name,"u")
-            storeAction(notFBackUL[i].screen_name, "u")
-            continue
+          unfollowUserCount(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet,unfollowCount)
         else:
           inputErrorHandler(confirm_list, "Invalid option!")
         gettingConfirm=False
@@ -615,6 +624,7 @@ def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
     elif friendReviewFilterOpt=="x": #exit
       break
   return 
+
 
 def inputLastAction():
   print "figure out this last action, stuff\n"
@@ -1156,7 +1166,7 @@ followSet=getSets(follow_file)
 print "followSet len: ", len(followSet)
 unfollowSet=getSets(unfollow_file)
 print "unfollowSet len: ", len(unfollowSet)
-touchedSet=set.union(suggestSet,followSet,unfollowSet)
+aaSet=set.union(suggestSet,followSet,unfollowSet)
 
 #from API
 friendsSet=set()
@@ -1180,6 +1190,10 @@ else: followersUL = {}
 notFollowingBackSet=set()
 notFollowingBackSet=friendsSet.difference(followersSet)
 print "notFollowngBackSet len: ", len(notFollowingBackSet)
+
+untouchedSet=friendsSet.difference(aaSet)
+print "untouchedSet len: ", len(untouchedSet)
+
 
 #############################
 #
