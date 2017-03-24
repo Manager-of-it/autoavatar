@@ -75,6 +75,7 @@ import re
 import sys
 import time
 import twitter
+import traceback
 
 reload(sys) 
 sys.setdefaultencoding('UTF8') #set default encoding from ascii to UTF8
@@ -84,10 +85,22 @@ sys.setdefaultencoding('UTF8') #set default encoding from ascii to UTF8
 # error handling
 #
 #
+
+def printTwitLimits():
+  print "application/rate_limit_status: ", api.CheckRateLimit('https://api.twitter.com/1.1/application/rate_limit_status.json?resources=statuses')
+  print "friends/list: ", api.CheckRateLimit('https://api.twitter.com/1.1/friends/list.json?resources=friends')
+  print "lists/members: ", api.CheckRateLimit('https://api.twitter.com/1.1/lists/members.json?')
+  print "account/verify_creds: ", api.CheckRateLimit('https://api.twitter.com/1.1/account/verify_credentials?')
+  print "search/tweets: ", api.CheckRateLimit('https://api.twitter.com/1.1/search/tweets?')
+  print "statuses/lookup: ", api.CheckRateLimit('https://api.twitter.com/1.1/statuses/lookup?')
+  print "users/search: ", api.CheckRateLimit('https://api.twitter.com/1.1/users/search?')
+  print "statuses/user_timeline: ", api.CheckRateLimit('https://api.twitter.com/1.1/statuses/user_timeline?')
+
 def inputErrorHandler(bad_input=None, message=""):
   print bcolors.FAIL + "Invalid input: {}\tMessage: {}".format(bad_input,message) + bcolors.ENDC
 def callErrorHandler(message=""):
   print bcolors.FAIL + "Message: {}".format(message) + bcolors.ENDC
+  printTwitLimits()
 class bcolors:
       HEADER = '\033[95m'
       OKBLUE = '\033[94m'
@@ -108,6 +121,8 @@ config = {}
 try:
   execfile("config.py", config)
 except:
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("Read of config.py failed.")
 
 try: 
@@ -116,6 +131,8 @@ try:
                   access_token_key=config["access_key"],
                   access_token_secret=config["access_secret"])
 except: 
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("API object creation failed.")
 
 #-----------------------------------------------------------------------
@@ -126,18 +143,26 @@ except:
 try:
   journal_file = open('aavatar.log', 'a+') 
 except:
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("Open read of avatar.log failed.")
 try:
   suggest_file = open('suggest.dat', 'a+')
 except:
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("Open read of suggest.dat failed.")
 try:
   follow_file = open('follow.dat', 'a+') 
 except:
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("Open read of follow.dat failed.")
 try:
   unfollow_file = open('unfollow.dat', 'a+') 
 except:
+  traceback.print_exc()
+  traceback.print_stack()
   callErrorHandler("Open read of unfollow.dat failed.")
 
 #-----------------------------------------------------------------------
@@ -347,10 +372,10 @@ def getSets(file_handle):   # read file into set
   my_set=set(line.strip() for line in file_handle)
   return my_set
 
-def journal(j_fileHandle, userID, j_action):
+def journal(j_fileHandle, userID, j_action, search_term="not_specified"):
   # capture uid and action (suggested, followed, unfollowed) and write to file
   if j_action in {"a","f","u","s"}:
-    j_fileHandle.write(str(datetime.datetime.now()) + "," +  userID + "," + j_action + "\n")
+    j_fileHandle.write(str(datetime.datetime.now()) + "," +  userID + "," + j_action + "," + search_term + "\n")
     j_fileHandle.flush()
     return
   else: inputErrorHandler(j_action, "Cannot log. Invalid journal action!")
@@ -382,6 +407,8 @@ def getFriends(user={}): #get a user's friends from twitter
   try:
     theseFriends = api.GetFriends(total_count=2000)
   except: 
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Get friends failed!")
     theseFriends = {}
   return theseFriends
@@ -392,6 +419,8 @@ def getFollowers(user={}): #get a user's followers from twitter
   try:
     theseFollowers = api.GetFollowers(total_count=2900)
   except: 
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Get followers failed!")
     theseFollowers = {}
   return theseFollowers
@@ -463,6 +492,25 @@ def trackUsers():
 # sample checks
 # foo = api.CheckRateLimit('https://api.twitter.com/1.1/application/rate_limit_status.json')
 
+# results = api.GetSearch(raw_query="q=devops%20lang%3Aen%20since%3A2016-11-09%20until%3A2016-11-10&src=typd") # devops, language - english, since 2016-11-09 until 2016-11-10 
+#api.CheckRateLimit('https://api.twitter.com/1.1/application/rate_limit_status.json?resources=statuses')
+#EndpointRateLimit(limit=180, remaining=179, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/friends/list.json?resources=friends')
+#EndpointRateLimit(limit=15, remaining=0, reset=1489351646)
+#api.CheckRateLimit('https://api.twitter.com/1.1/lists/members.json?')
+#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/account/verify_credentials?')
+#EndpointRateLimit(limit=75, remaining=75, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/search/tweets?')
+#EndpointRateLimit(limit=180, remaining=180, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/statuses/lookup?')
+#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/users/search?')
+#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
+#api.CheckRateLimit('https://api.twitter.com/1.1/statuses/user_timeline?')
+#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
+
+
 def getFrRL():
   limit = api.CheckRateLimit('https://api.twitter.com/1.1/friends/list.json?resources=search')
   print datetime.datetime.fromtimestamp(limit.reset).strftime('%c') # convert epoch to readable time
@@ -472,13 +520,14 @@ def getFrRL():
 #
 # search foo
 #
-# results = api.GetSearch(raw_query="q=devops%20lang%3Aen%20since%3A2016-11-09%20until%3A2016-11-10&src=typd") # devops, language - english, since 2016-11-09 until 2016-11-10 
 
 def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=999999999999999999):
   print "searching: q100(q_term="+q_term+",q_lang="+q_lang+",q_since="+q_since+",q_until="+q_until+",q_count="+str(q_count)+",q_max_id="+str(q_max_id)+")"
   try:
     my_results = api.GetSearch(term=q_term, lang=q_lang, since=q_since, until=q_until, count=q_count, max_id=q_max_id)
   except: 
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Get search failed!")
     my_results = [] #null
     return my_results
@@ -490,12 +539,14 @@ def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.d
 # adding/removing followers 
 #
 
-def followUser(fU=None,id="",f_screen_name=""):
+def followUser(fU=None,id="",f_screen_name="", search_term="not_specified"):
   if f_screen_name=="":
     f_screen_name=fU.screen_name
   try: 
     api.CreateFriendship(screen_name=f_screen_name, follow=True)
   except:
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Create friendship failed!")
     return
   print bcolors.BOLD + "Awesome! You are now following: {}\n".format(f_screen_name) + bcolors.ENDC 
@@ -505,6 +556,8 @@ def unfollowP(unf_screen_name=""):
   try:
     api.DestroyFriendship(screen_name=unf_screen_name)
   except:
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Remove friendship failed!")
     return
   print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unf_screen_name) + bcolors.ENDC 
@@ -515,6 +568,8 @@ def unfollowUser(unfU=None,id="",unf_screen_name=""):
   try:
     api.DestroyFriendship(screen_name=unf_screen_name)
   except:
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Remove friendship failed!")
     return
   print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unf_screen_name) + bcolors.ENDC 
@@ -568,10 +623,9 @@ def unfollowUserCount(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
   if debug==True: print "DEBUG: unfollow loop() notFBackUL:", notFBackUL, "type(notFBackUL): ", type(notFBackUL)
   if debug==True: print "DEBUG: unfollow loop() untouchedSet: ", untouchedSet
   for i in range(unfollowCount):
-    if debug==True: print "DEBUG: unfollow loop() i:",i, "type(i): ", type(i)
-    if debug==True: print "DEBUG: unfollow loop() notFBackUL[i].screen_name: ", notFBackUL[i].screen_name
-    if debug==True: print "DEBUG: unfollow loop() len(untouchedSet): ", len(untouchedSet)
-#            if debug==True: print "DEBUG: unfollow loop() untouchedSet: ", untouchedSet
+    print "unfollow loop() i:",i, "type(i): ", type(i)
+    print "unfollow loop() notFBackUL[i].screen_name: ", notFBackUL[i].screen_name
+    print "unfollow loop() len(untouchedSet): ", len(untouchedSet)
     if notFBackUL[i].screen_name not in untouchedSet:
       unfollowUser(notFBackUL[i]) # remove user from followers
       journal(journal_file,notFBackUL[i].screen_name,"u")
@@ -604,7 +658,7 @@ def getFriendReviewUL(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
     elif friendReviewFilterOpt=="c": #UNFOLLOW COUNT
       unfollowCount=raw_input("unfollow how many of the latest not following back. unfollowCount= ")
       while (not unfollowCount.isdigit()) or unfollowCount<=0:
-        max_follows=raw_input("Invalid entry! unfollowCount must be a number >0. Input unfollowCount= ")
+        unfollowCount=raw_input("Invalid entry! unfollowCount must be a number >0. Input unfollowCount= ")
       gettingConfirm=True
       while gettingConfirm:
         confirm_list=raw_input("You entered unfollowCount="+str(unfollowCount)+" please (c)onfirm or (d)iscard: ")
@@ -792,6 +846,8 @@ def getUserTweets(g_utl,gUTcount=10):
   try:
     utl=api.GetUserTimeline(screen_name=g_utl.screen_name,count=gUTcount)
   except:
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Get user timeline failed!")
     return
   return utl
@@ -800,6 +856,8 @@ def getUserTweetsFromP(g_screen_name, gUTcount=10):
   try:
     utl=api.GetUserTimeline(screen_name=g_screen_name,count=gUTcount)
   except:
+    traceback.print_exc()
+    traceback.print_stack()
     callErrorHandler("Get user timeline failed!")
     return
   return utl
@@ -919,7 +977,7 @@ def storeFriendScore(thisProfileDict, thisScore):
 #
 def getProfileLists():
   thisProfileLists = {
-      'screen_namesNot': ['tmj', 'job', 'anon', 'bot', 'career'],
+      'screen_namesNot': ['tmj', 'job', 'anon', 'bot', 'career', 'MAGA' ],
       'locationIn': ['Cambridge', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
       }
   return thisProfileLists
@@ -1121,6 +1179,7 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
       if debug==True: print "DEBUG: autoAvatar() listUsers: ", listUsers
       for r in range(len(listUsers)):
           if listProfs[listUsers[r]]['friendScore']>0:
+            if debug==True: print "DEBUG: autoAvatar() user: ", listUsers[r], " friendScore: ",listProfs[listUsers[r]]['friendScore'] 
             followUser(f_screen_name=listUsers[r])
             action_aa='f'
             m_flw=m_flw+1
@@ -1128,7 +1187,8 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
             if m_flw>=aa_max_follows: break
           else:
             action_aa='s'
-          journal(journal_file,listUsers[r],action_aa)
+          journal(journal_file,listUsers[r],action_aa, search_term=q_term)
+#          journal(journal_file,listUsers[r],action_aa)
           storeAction(listUsers[r], action_aa)
       if debug==True: print "DEBUG: autoAvatar() outside loop - aa_max_follows, m_flw: ",aa_max_follows, m_flw
     if m_flw>=aa_max_follows: break
@@ -1193,6 +1253,7 @@ print "notFollowngBackSet len: ", len(notFollowingBackSet)
 
 untouchedSet=friendsSet.difference(aaSet)
 print "untouchedSet len: ", len(untouchedSet)
+
 
 
 #############################
@@ -1316,5 +1377,6 @@ def closeFiles():
   suggest_file.close()
   follow_file.close()
     
+printTwitLimits()
 goMain(debug=True)
 closeFiles()
