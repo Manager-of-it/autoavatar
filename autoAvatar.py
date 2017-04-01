@@ -76,6 +76,7 @@ import sys
 import time
 import twitter
 import traceback
+from random import randint
 
 reload(sys) 
 sys.setdefaultencoding('UTF8') #set default encoding from ascii to UTF8
@@ -130,6 +131,7 @@ try:
                   consumer_secret=config["consumer_secret"],
                   access_token_key=config["access_key"],
                   access_token_secret=config["access_secret"])
+#                  sleep_on_rate_limit=True)
 except: 
   traceback.print_exc()
   traceback.print_stack()
@@ -165,6 +167,8 @@ except:
   traceback.print_stack()
   callErrorHandler("Open read of unfollow.dat failed.")
 
+followingUL = {}
+
 #-----------------------------------------------------------------------
 # get users, print
 #-----------------------------------------------------------------------
@@ -178,10 +182,20 @@ def getUfQ(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime
     print "Len, ul:",len(ul)
     return ul
 
-def getTL(thisUL):
+def getTL(thisUL,man_limit=0):
   thisTL=[]
-  for i in range(len(thisUL)):
+  if len(thisUL)>=900:
+    limit=850
+  else: 
+    limit=len(thisUL)
+  if man_limit != 0: 
+    limit=man_limit
+  for i in range(limit):
+    sys.stdout.write('.')
+    if i%10 == 0: sys.stdout.write(str(i))
+    sys.stdout.flush()
     thisTL.append(getUserTweets(thisUL[i]))
+  print ""
   return thisTL
 
 def getMaxId(my_statusList):
@@ -625,11 +639,12 @@ def unfollowUserCount(thisFriendsRwUL,thisFriendsRwSet,thisNotFollowingBackRwSet
   for i in range(unfollowCount):
     print "unfollow loop() i:",i, "type(i): ", type(i)
     print "unfollow loop() notFBackUL[i].screen_name: ", notFBackUL[i].screen_name
-    print "unfollow loop() len(untouchedSet): ", len(untouchedSet)
+    print "unfollow loop() unfollowCount", unfollowCount
     if notFBackUL[i].screen_name not in untouchedSet:
       unfollowUser(notFBackUL[i]) # remove user from followers
       journal(journal_file,notFBackUL[i].screen_name,"u")
       storeAction(notFBackUL[i].screen_name, "u")
+      chillOut()
       continue
     else: 
       print bcolors.UNDERLINE + "You have followed: {}. Not Touching!\n".format(notFBackUL[i].screen_name) + bcolors.ENDC
@@ -876,6 +891,15 @@ def getPs(gPq_term="devops", gPq_count="20"):
   pLists=getProfileLists()
   thisListProfs=getListProfileDicts(ul,tl,pLims,pLists)
   return thisListProfs
+
+def getPsWtl(ul=followingUL, gPq_count="100"):
+#  125 def getUfQ(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=20, q_max_id=99999999     9999999999):
+  # q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=9999999999     99999999):
+  tl=getTL(ul)
+  pLims=getProfileLimitsPoints()
+  pLists=getProfileLists()
+  thisListProfs=getListProfileDicts(ul,tl,pLims,pLists)
+  return thisListProfs, tl
 
 def getProfileDict(userObject, userStatusObject, pLims, pLists):
   thisProfileDict=buildProfileDict(userObject, userStatusObject)
@@ -1175,8 +1199,9 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
       pLists=getProfileLists()
       listProfs=getListProfileDicts(ul,tl,pLims,pLists)
       if debug==True: print "DEBUG: autoAvatar() type(listProfs)", type(listProfs)
-      listUsers=sorted(listProfs, key=lambda x: listProfs[x]['friendScore'])
+      listUsers=sorted(listProfs, key=lambda x: listProfs[x]['friendScore'], reverse=True)
       if debug==True: print "DEBUG: autoAvatar() listUsers: ", listUsers
+      if debug==True: print "DEBUG: autoAvatar() len(listUsers): ", len(listUsers)
       for r in range(len(listUsers)):
           if listProfs[listUsers[r]]['friendScore']>0:
             if debug==True: print "DEBUG: autoAvatar() user: ", listUsers[r], " friendScore: ",listProfs[listUsers[r]]['friendScore'] 
@@ -1185,6 +1210,7 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
             m_flw=m_flw+1
             if debug==True: print "DEBUG: autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
             if m_flw>=aa_max_follows: break
+            chillOut()
           else:
             action_aa='s'
           journal(journal_file,listUsers[r],action_aa, search_term=q_term)
@@ -1371,6 +1397,11 @@ def goMain(debug=False):
     else:
       inputErrorHandler(thisTodo,"Try again!") 
     thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow, (a)utoAvatar or (q)uit: ")
+
+def chillOut():
+  rand=randint(0,7)
+  print "dont choke twitter, wait: ",rand," seconds. time: ",datetime.datetime.now().time()
+  time.sleep(rand)
 
 def closeFiles():
   journal_file.close()
