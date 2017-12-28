@@ -3,69 +3,31 @@
 ######################################################################
 #
 # Name: autoavator.py
+# Version: 2.0
 # Description: Twitter tool written in python and using a python API to select users to follow
 # Purpose: Generate a list of possible users to follow on twitter
 # Author: Manager_of_it
 # Date: November 24, 2016
+# Version 2.0: September 4, 2017
 
 # TODOS
 # functional: 
 #   query non-followers by dates ago followed
 #   unFollow by account last activity date
-#   score screen_name in list -- #DONE
-#   score location in list -- #DONE
-#
-#   review profiles, attribs and scores #DONE
-#   sort profiles #DONE
-#
 #
 # file mangement:
-#   store friendProfile in local file
+#   store friendProfile in database 
+#   store aavatar.log in database
 #   refresh friendProfile, friends, followers local file from API
 # API management:
 #   manage rate limits for getting friends, followers
 # auto automation:
-#   store list of queries to loop over
+#   store list of queries to loop over -- DONE
 #   loop over a list of profiles, friend or skip
 #   generate activity report of automation
 #
-# Operations: 
-# key word search of users -- DONE
-# 
-# print report -- list users: name,tweets,frnd, flwrs, pp ratio, spam ratio -- # DONE!
-# print user_name, description, #tweets, #followers, #following, ratio, # # location, created, id, verified  #DONE
-# format created date 
-# make results of queries return unique users -- DONE!
-# sort (print) unique users:name,tweets,frnd, flwrs, pp ratio, spam ratio -- # DONE!
-#
-# print last tweet, date -- DONE
-# print last 10 tweets, dates -- DONE
-#
-# establish work flow--> users (follow, ignore, more info) --DONE
-# interactive::(f)ollow,(s)kip,(m)ore -- DONE
-#
-# add friends selected users -- DONE
-#
-# by screen_name
-# journal friends suggested, added, removed -- DONE
-# read sets from files: suggestSet, followSet, unfollowSet -- DONE
-# get list friends existing; convert to set(of screen_names): existingSet -- # DONE
-# make set, touchedSet: intersection of suggestSet, existingSet, followSet, # unfollowSet -- DONE
-# clean list, getFreshUL(): compare new suggestions with touchedSet -- DONE
-# provide more inputs for searches -- DONE
-#
-# get more tweets/users from tweet timeline: manage  max_id -- DONE
-# get max_id from list -- DONE
-# 
-# get followers -- DONE
 #   query non-followers by dates ago followed
-# remove non-followers -- DONE
 #
-# generate followScore=100 # DONE
-# manage date comparisons: last activity, account created #DONE
-#
-#   compute retweet ratio -- DONE
-#   print user from profile -- DONE
 
 import datetime
 import json
@@ -77,6 +39,7 @@ import time
 import twitter
 import traceback
 from random import randint
+from  dictAutoAvatar import *
 
 reload(sys) 
 sys.setdefaultencoding('UTF8') #set default encoding from ascii to UTF8
@@ -96,8 +59,9 @@ def printTwitLimits():
   print "statuses/lookup: ", api.CheckRateLimit('https://api.twitter.com/1.1/statuses/lookup?')
   print "users/search: ", api.CheckRateLimit('https://api.twitter.com/1.1/users/search?')
   print "statuses/user_timeline: ", api.CheckRateLimit('https://api.twitter.com/1.1/statuses/user_timeline?')
+#
 
-def inputErrorHandler(bad_input=None, message=""):
+def inputErrorHandler(bad_input=None, message="", debug=False):
   print bcolors.FAIL + "Invalid input: {}\tMessage: {}".format(bad_input,message) + bcolors.ENDC
 def callErrorHandler(message=""):
   print bcolors.FAIL + "Message: {}".format(message) + bcolors.ENDC
@@ -115,74 +79,10 @@ class bcolors:
       UNDERLINE = '\033[4m'
 
 #-----------------------------------------------------------------------
-# create twitter API object
-#-----------------------------------------------------------------------
-
-config = {}
-try:
-  execfile("config.py", config)
-except:
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("Read of config.py failed.")
-
-try: 
-  api = twitter.Api(consumer_key=config["consumer_key"], 
-                  consumer_secret=config["consumer_secret"],
-                  access_token_key=config["access_key"],
-                  access_token_secret=config["access_secret"])
-#                  sleep_on_rate_limit=True)
-except: 
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("API object creation failed.")
-
-#-----------------------------------------------------------------------
-# open data and log files
-#-----------------------------------------------------------------------
-
-#def initFiles():
-try:
-  journal_file = open('aavatar.log', 'a+') 
-except:
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("Open read of avatar.log failed.")
-try:
-  suggest_file = open('suggest.dat', 'a+')
-except:
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("Open read of suggest.dat failed.")
-try:
-  follow_file = open('follow.dat', 'a+') 
-except:
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("Open read of follow.dat failed.")
-try:
-  unfollow_file = open('unfollow.dat', 'a+') 
-except:
-  traceback.print_exc()
-  traceback.print_stack()
-  callErrorHandler("Open read of unfollow.dat failed.")
-
-followingUL = {}
-
-#-----------------------------------------------------------------------
 # get users, print
 #-----------------------------------------------------------------------
 
-def getUfQ(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=20, q_max_id=999999999999999999):
-    r=q100(q_term,q_lang,q_since,q_until,q_count,q_max_id) #search
-    ul=convertSLtoUL(r) #convert status to users
-    ul=getULU(ul) #clean users (remove dups)
-    ul=getFreshUL(ul,touchedSet)
-    printLU(ul)  #report
-    print "Len, ul:",len(ul)
-    return ul
-
-def getTL(thisUL,man_limit=0):
+def getTL(thisUL,man_limit=0, debug=False):
   thisTL=[]
   if len(thisUL)>=900:
     limit=850
@@ -198,7 +98,7 @@ def getTL(thisUL,man_limit=0):
   print ""
   return thisTL
 
-def getMaxId(my_statusList):
+def getMaxId(my_statusList, debug=False):
   thisMaxId=999999999999999999
   for i in range(len(my_statusList)):
     if thisMaxId > my_statusList[i].id:
@@ -232,14 +132,14 @@ def getULU(thisUL):  #get unique list of users -- scrub dups
 
 #get unexamined list of users -- remove already touched users
 def getFreshUL(thisUL,thisTouchedSet):
-  print "pre-cleaned: "+str(len(thisUL))
+  print "pre-fresh: "+str(len(thisUL))
   cleanUL=list(thisUL)
   for i in range(len(thisUL)):
     if thisUL[i].screen_name in thisTouchedSet:
       print "remove " + thisUL[i].screen_name + " from User List"
       cleanUL.remove(thisUL[i])
     else: continue
-  print "cleaned: "+str(len(cleanUL))
+  print "fresh: "+str(len(cleanUL))
   return cleanUL
 
 # rid users with a null status
@@ -261,7 +161,6 @@ def printLU(listOfUsers): #print List Users
             continue
         print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}".format(listOfUsers[i].screen_name,listOfUsers[i].statuses_count,listOfUsers[i].followers_count,listOfUsers[i].friends_count,round(float(listOfUsers[i].followers_count)/listOfUsers[i].friends_count,3),round(float(listOfUsers[i].statuses_count)/listOfUsers[i].followers_count,3))
 
-
 def printLUfProf(thisLP, debug=False): #print list of auto-avatar user profiles
     print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio\tfriendScore" + bcolors.ENDC
     for i,prof in enumerate(thisLP):
@@ -272,19 +171,11 @@ def printLUfProf(thisLP, debug=False): #print list of auto-avatar user profiles
           continue
         print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(prof,thisLP[prof]['tweets'],thisLP[prof]['followers'],thisLP[prof]['friends'],thisLP[prof]['pratio'],thisLP[prof]['sratio'],thisLP[prof]['friendScore'])
 
-def printSLUfProf(thisLP, thisSortedL): #print list of auto-avatar user profiles
-    print bcolors.HEADER + "screen_name\ttweets\tfollwers\t  friends\tpop-ratio\tchorus-ratio\tfriendScore" + bcolors.ENDC
-    for i in range(len(thisSortedL)):
-#        print i
-        if thisLP[thisSortedL[i]]['friends'] == 0 or thisLP[thisSortedL[i]]['followers'] == 0:
-          print "screen_name: {}\tNO FOLLOWERS AND\OR FRIENDS".format(thisSortedL[i])
-          continue
-        print "{0:14}\t{1}\t{2:8}\t{3:8}\t{4:5.1f}\t\t{5:5.1f}\t\t{6:5}".format(thisSortedL[i],thisLP[thisSortedL[i]]['tweets'],thisLP[thisSortedL[i]]['followers'],thisLP[thisSortedL[i]]['friends'],thisLP[thisSortedL[i]]['pratio'],thisLP[thisSortedL[i]]['sratio'],thisLP[thisSortedL[i]]['friendScore'])
-
 ###############################################
 #
 # sort list users:
 #  screen_name = n #  statuses_count = t #  friends_count = fr #  followers_count = f #  pratio = p #  sratio = s
+
 
 def sortLU(thisULUlist,thisSortType='p'):
   sortedLU=False
@@ -419,7 +310,7 @@ def getFriends(user={}): #get a user's friends from twitter
 #  some_user = api.GetUser(screen_name="Manager_of_it")
 #get list of friends
   try:
-    theseFriends = api.GetFriends(total_count=2000)
+    theseFriends = api.GetFriends(total_count=2500)
   except: 
     traceback.print_exc()
     traceback.print_stack()
@@ -431,7 +322,7 @@ def getFollowers(user={}): #get a user's followers from twitter
 #  some_user = api.GetUser(screen_name="Manager_of_it")
 #get list of followers
   try:
-    theseFollowers = api.GetFollowers(total_count=2900)
+    theseFollowers = api.GetFollowers(total_count=2500)
   except: 
     traceback.print_exc()
     traceback.print_stack()
@@ -439,91 +330,12 @@ def getFollowers(user={}): #get a user's followers from twitter
     theseFollowers = {}
   return theseFollowers
 
-###############################################
-#
-# review Users
-#
-
-def reviewUL(reviewUL):
-  for i in range(len(reviewUL)): 
-    printUser(reviewUL[i])
-    validInputaI1 = False # validate input
-    while not validInputaI1:
-      actionInput = raw_input("(f)ollow, (s)kip, (m)ore info, e(x)it: ")
-      if actionInput not in {'f','s','m','x'}:
-        inputErrorHandler(actionInput, "Invalid option!")
-      else:
-        validInputaI1 = True
-    if actionInput=='f': #process input
-      followUser(reviewUL[i])
-      journal(journal_file,reviewUL[i].screen_name,actionInput)
-      storeAction(reviewUL[i].screen_name, actionInput)
-      continue
-    elif actionInput=='s':
-      journal(journal_file,reviewUL[i].screen_name,actionInput)
-      storeAction(reviewUL[i].screen_name, actionInput)
-      continue
-    elif actionInput=='m':
-      tweetL=getUserTweets(reviewUL[i])
-      printUserTweets(tweetL)
-      validInputaI2 = False
-      while not validInputaI2: #validate more input
-        actionInput2= raw_input("(f)ollow, (s)kip: ")
-        if actionInput2 not in {'f','s'}: 
-          inputErrorHandler(actionInput2, "Invalid option!")
-        else:
-          validInputaI2 = True
-      if actionInput2=='f':
-        followUser(reviewUL[i])
-      journal(journal_file,reviewUL[i].screen_name,actionInput2) 
-      storeAction(reviewUL[i].screen_name, actionInput2)
-      continue 
-    break #only option left is exit, so get to it
-                       
-####################
-#
-# using Streams
-#
-
-def trackUsers():
-    with open('output.txt', 'a') as f:
-        # api.GetStreamFilter will return a generator that yields one status
-        # message (i.e., Tweet) at a time as a JSON dictionary.
-        for line in api.GetStreamFilter(track=USERS):
-            f.write(json.dumps(line))
-            f.write('\n')
-
-#####
-# rate limit foo
-#
-#
 # convert epoch to date time:
 # datetime.datetime.fromtimestamp(1479877104).strftime('%c')
 #
 # endpoint table:
 # https://dev.twitter.com/rest/public/rate-limits
 ## 
-# sample checks
-# foo = api.CheckRateLimit('https://api.twitter.com/1.1/application/rate_limit_status.json')
-
-# results = api.GetSearch(raw_query="q=devops%20lang%3Aen%20since%3A2016-11-09%20until%3A2016-11-10&src=typd") # devops, language - english, since 2016-11-09 until 2016-11-10 
-#api.CheckRateLimit('https://api.twitter.com/1.1/application/rate_limit_status.json?resources=statuses')
-#EndpointRateLimit(limit=180, remaining=179, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/friends/list.json?resources=friends')
-#EndpointRateLimit(limit=15, remaining=0, reset=1489351646)
-#api.CheckRateLimit('https://api.twitter.com/1.1/lists/members.json?')
-#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/account/verify_credentials?')
-#EndpointRateLimit(limit=75, remaining=75, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/search/tweets?')
-#EndpointRateLimit(limit=180, remaining=180, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/statuses/lookup?')
-#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/users/search?')
-#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
-#api.CheckRateLimit('https://api.twitter.com/1.1/statuses/user_timeline?')
-#EndpointRateLimit(limit=900, remaining=900, reset=1489351877)
-
 
 def getFrRL():
   limit = api.CheckRateLimit('https://api.twitter.com/1.1/friends/list.json?resources=search')
@@ -535,7 +347,8 @@ def getFrRL():
 # search foo
 #
 
-def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=999999999999999999):
+
+def q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=999999999999999999, debug=False):
   print "searching: q100(q_term="+q_term+",q_lang="+q_lang+",q_since="+q_since+",q_until="+q_until+",q_count="+str(q_count)+",q_max_id="+str(q_max_id)+")"
   try:
     my_results = api.GetSearch(term=q_term, lang=q_lang, since=q_since, until=q_until, count=q_count, max_id=q_max_id)
@@ -562,8 +375,9 @@ def followUser(fU=None,id="",f_screen_name="", search_term="not_specified"):
     traceback.print_exc()
     traceback.print_stack()
     callErrorHandler("Create friendship failed!")
-    return
+    return False
   print bcolors.BOLD + "Awesome! You are now following: {}\n".format(f_screen_name) + bcolors.ENDC 
+  return True
 
 def unfollowP(unf_screen_name=""):
   # api.GetSearch(term=q_term, lang=q_lang, since=q_since, until=q_until, count=q_count, max_id=q_max_id)
@@ -573,8 +387,9 @@ def unfollowP(unf_screen_name=""):
     traceback.print_exc()
     traceback.print_stack()
     callErrorHandler("Remove friendship failed!")
-    return
+    return False
   print bcolors.BOLD + "Goodbye! You have unfollowed: {}\n".format(unf_screen_name) + bcolors.ENDC 
+  return True
 
 def unfollowUser(unfU=None,id="",unf_screen_name=""):
   if unf_screen_name=="":
@@ -595,19 +410,15 @@ def unfollowUser(unfU=None,id="",unf_screen_name=""):
 # Description:
 #   followers User List
 #   set followers by screen_name, subset not-following back by screen_name
-
 # sort by: use existing sortLU()
-
 # select review list:
 #   all followers
 #   not following back
 #   filtered by last action
-
 # Review list:
 #   skip, more, unfollow, exit
-#
 
-def reviewFriends(thisFriendsUL,thisFriendsSet,thisNotFollowingBackSet):
+def reviewFriends(thisFriendsUL,thisFriendsSet,thisNotFollowingBackSet, debug=False):
   friendInput=False
   while not friendInput:
     friendOpt=raw_input("friend input: (s)ort, (r)eview, e(x)it: ")
@@ -736,6 +547,7 @@ def reviewPsU(this_p, this_tl):
     else: break #nothing left to do but exit
   return
 
+
 def reviewPsF(this_p, this_tl, debug=False):
   thisSortedL=sortPs(this_p)
   for i in range(len(thisSortedL)):
@@ -777,28 +589,6 @@ def reviewMoreFromP(this_p, this_tl, debug=False):
       storeAction(this_p, actionOpt2)
   return
 
-
-#def reviewPs(this_p):
-#  for i,prof in enumerate(this_p):
-#    printUfP(prof, this_p[prof])
-#    reviewPsOpt=raw_input("friend list review option: (s)kip, (u)nfollow, (m)ore, e(x)it: ")
-#    if reviewPsOpt not in {"s","u","m","x"}:
-#      inputErrorHandler(reviewPsOpt, "Invlid Entry.  Try again!")
-#    elif reviewPsOpt=='u':
-#      unfollowUser(unf_screen_name=prof) # remove user from followers
-#      journal(journal_file,prof,reviewPsOpt)
-#      storeAction(prof, reviewPsOpt)
-#      continue
-#    elif reviewPsOpt=='m':
-#      print "not implemented, sorry\n"
-##      reviewFriendsMoreAction(this_friendActionUL[i])
-#      continue
-#    elif reviewPsOpt=='s':
-#      print "skip\n"
-#      continue
-#    else: break #nothing left to do but exit
-#  return
-
 def reviewFriendsAction(this_friendActionUL):
   for i in range(len(this_friendActionUL)):
     printUser(this_friendActionUL[i])
@@ -834,7 +624,8 @@ def reviewFriendsMoreAction(this_friendActionMoreUser):
       storeAction(this_friendActionMoreUser.screen_name, actionOpt2)
   return
 
-def printBanner():
+
+def printBanner(debug=False):
   print "\n\n\n\n\n\n\n"
   print bcolors.BOLD + "   _____          __              _____                __                  " + bcolors.ENDC
   print bcolors.BOLD + "  /  _  \  __ ___/  |_  ____     /  _  \___  _______ _/ |______ _______   " + bcolors.ENDC
@@ -892,22 +683,6 @@ def getPs(gPq_term="devops", gPq_count="20"):
   thisListProfs=getListProfileDicts(ul,tl,pLims,pLists)
   return thisListProfs
 
-def getPsWtl(ul=followingUL, gPq_count="100"):
-#  125 def getUfQ(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=20, q_max_id=99999999     9999999999):
-  # q100(q_term="devops",q_lang="en",q_since="2016-01-01",q_until=str(datetime.date.today()),q_count=100,q_max_id=9999999999     99999999):
-  tl=getTL(ul)
-  pLims=getProfileLimitsPoints()
-  pLists=getProfileLists()
-  thisListProfs=getListProfileDicts(ul,tl,pLims,pLists)
-  return thisListProfs, tl
-
-def getProfileDict(userObject, userStatusObject, pLims, pLists):
-  thisProfileDict=buildProfileDict(userObject, userStatusObject)
-  thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
-  thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
-  return thisProfileDict
-
-# profileListDicts=[key=screen_name, profileDict]
 def getListProfileDicts(userList, statusList, pLims, pLists, debug=True):
   thisListProfiles={}
   for i in range(len(userList)):
@@ -915,232 +690,18 @@ def getListProfileDicts(userList, statusList, pLims, pLists, debug=True):
     try:
       thisProfileDict=buildProfileDict(userList[i], statusList[i])
     except:
+      if debug==True: print "DEBUG: getListProfileDicts - buildProfileDict failed"
       return thisListProfiles
     thisFriendScore=computeFriendScore(thisProfileDict, pLims, pLists)
+    if debug==True: print "DEBUG: getListProfileDicts thisFriendScore: ", thisFriendScore
     thisProfileDict=storeFriendScore(thisProfileDict,thisFriendScore)
     thisListProfiles[userList[i].screen_name]=thisProfileDict
   return thisListProfiles
 
-# profileDict:
-# user object: empirical, 7 items: list[tweets, followers, friends, account_create_datetime, pic, bio, verified]
-# status object: last_status_datetime, offset_status_datetime, retweets]
-#
-# calculated 1st order, pratio(followers/friends), sratio(tweets/followers), daysOld(now-account create),
-# calculated 2nd order, freqRatio(tweets/daysOld),   daysLast(now-last status),timeFnumTweets(now-offset_status_datetime)  volumeRatio(numTweets/timeFnumTweets), retweetRatio(retweets/numTweets)
-# calculted 3rd order, friendsScore(baysean),
-
-def buildProfileDict(userObject, userStatusObject):
-  thisProfileDict={
-  # 1st order profile attributes
-      'id': userObject.id,
-      'screen_name': userObject.screen_name,
-      'tweets': userObject.statuses_count,
-      'followers': userObject.followers_count,
-      'friends': userObject.friends_count,
-      'account_create_datetime': datetime.datetime.strptime(userObject.created_at,'%a %b %d %H:%M:%S +0000 %Y'),
-      'picBool': getPicState(userObject.profile_image_url),
-      'bioBool': getBioState(userObject.description),
-      'description': userObject.description,
-      'verified': userObject.verified,
-      'last_status_datetime': datetime.datetime.strptime(userStatusObject[0].created_at,'%a %b %d %H:%M:%S +0000 %Y'),
-      'offset_status_datetime': datetime.datetime.strptime(userStatusObject[len(userStatusObject)-1].created_at,'%a %b %d %H:%M:%S +0000 %Y'),
-      'retweets': getRetweets(userStatusObject),
-      'pratio': userObject.followers_count/float(userObject.friends_count),
-      'sratio': userObject.statuses_count/float(userObject.followers_count),
-      'location': userObject.location,
-      }
-  # 2nd order profile attributes
-  thisProfileDict['daysOld']=getDaysOld(thisProfileDict['account_create_datetime'])
-  thisProfileDict['freqRatio']=userObject.statuses_count/float(thisProfileDict['daysOld'])
-  thisProfileDict['daysLast']=(datetime.datetime.now()-thisProfileDict['last_status_datetime']).days
-  thisProfileDict['timeFnumTweets']=getTimeFnumTweets(thisProfileDict['offset_status_datetime'])
-  thisProfileDict['volumeRatio']=len(userStatusObject)/thisProfileDict['timeFnumTweets']
-  thisProfileDict['retweetRatio']=(thisProfileDict['retweets'])/float(len(userStatusObject))
-  return thisProfileDict
-
-def getDaysOld(thisAcdt):
-  if (datetime.datetime.now()-thisAcdt).days <= 0:
-    return 1
-  else: return (datetime.datetime.now()-thisAcdt).days 
-
-def getTimeFnumTweets(offsetDT):
-  thisTimeFnumTweets=(datetime.datetime.now()-offsetDT).days
-  if thisTimeFnumTweets<=0:
-    thisTimeFnumTweets=1
-  return thisTimeFnumTweets
-
-def getRetweets(statusObject):
-  thisNumRetweets=0
-  for i in range(len(statusObject)):
-    if re.match('^RT', statusObject[i].text):
-      thisNumRetweets=thisNumRetweets+1
-      continue
-  return thisNumRetweets
-
-def getPicState(thisProfileImage): #TODOs: define
-  if re.match('.*default.*', thisProfileImage):
-    thisPicState=False
-  else: 
-    thisPicState=True
-  return thisPicState
-
-def getBioState(description):
-  if description == "": 
-    thisBioState=False
-  else: thisBioState=True
-  return thisBioState
-
-def storeFriendScore(thisProfileDict, thisScore):
-  thisProfileDict['friendScore']=thisScore
-  return thisProfileDict
-
-
-# profileLists:
-# dict[key=listName, value=list]
-#        2x2 items:  "list{In,Not}": location, screen_name
-#
-def getProfileLists():
-  thisProfileLists = {
-      'screen_namesNot': ['tmj', 'job', 'anon', 'bot', 'career', 'MAGA' ],
-      'locationIn': ['Cambridge', 'Massachusetts', 'San Francisco', 'California', 'Providence', 'SF', 'RI', 'CA', 'MA']
-      }
-  return thisProfileLists
-
-# profileLimitsPoints:
-# dict[key=attributeName, tuple(limit,points)]
-#
-def getProfileLimitsPoints():
-  thisLimitsPointsList = {
-      #black marks
-      'screen_nameBool': ("Boolean",-109),
-      'friendMin': (20,-99),
-      'followersMin': (20,-99),
-      'pratioMax': (15,-99), #pop-ratio
-      'sratioMax': (15,-99), #chorus-ratio
-      'activeMax': (30,-99),
-      'retweetRatioMax': (0.9,-99), #retweetScale
-      #blue marks
-      'tweetsMax': (200000,-80), #200,000,
-      'volumeRatioMax': (9,-75),
-      'timeFnumTweetsMax': (15,-70), #days
-      'picBool': ("Boolean",-50),
-      'timeFnumTweetsMin': (1,-50), #days
-      'bioBool': ("Boolean",-40),
-      #yellow marks
-      'volumeRatioMin': (0,-15), #tweets/day
-      'freqRatioMax': (10,-20), #tweets/day
-      'accountAgeMin': (90,-10),
-      'tweetsMin': (100,-10),
-      'activeMin': (2,-10),
-      #gree marks
-      'verified': ("Boolean",10),
-      'locationBool': ("Boolean",20),
-      'accountAgeMax': (1825,30) #5 years in days
-      }
-  return thisLimitsPointsList
-
-def printShowWork(limitName, thisLims,  runFriendScore):
-  print "item:", limitName, "\tLimit:", thisLims[limitName][0], "\tPoints:", thisLims[limitName][1], "\tScore:", runFriendScore
-  return
-
-def computeFriendScore(profileDict, pLims, pLists, showWork=True):
-  thisFriendScore=100
-  if showWork: print "Friend score init:", thisFriendScore
-  if profileDict['friends'] < pLims['friendMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['friendMin'][1]
-    if showWork: printShowWork('friendMin', pLims, thisFriendScore)
-  if profileDict['followers'] < pLims['followersMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['followersMin'][1]
-    if showWork: printShowWork('followersMin', pLims, thisFriendScore)
-  if profileDict['pratio'] > pLims['pratioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['pratioMax'][1]
-    if showWork: printShowWork('pratioMax', pLims, thisFriendScore)
-  if profileDict['sratio'] > pLims['sratioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['sratioMax'][1]
-    if showWork: printShowWork('sratioMax', pLims, thisFriendScore)
-  if profileDict['retweetRatio'] > pLims['retweetRatioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['retweetRatioMax'][1]
-    if showWork: printShowWork('retweetRatioMax', pLims, thisFriendScore)
-  if profileDict['tweets'] > pLims['tweetsMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['tweetsMax'][1]
-    if showWork: printShowWork('tweetsMax', pLims, thisFriendScore)
-  if profileDict['tweets'] < pLims['tweetsMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['tweetsMin'][1]
-    if showWork: printShowWork('tweetsMin', pLims, thisFriendScore)
-  if profileDict['volumeRatio'] <  pLims['volumeRatioMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['volumeRatioMin'][1]
-    if showWork: printShowWork('volumeRatioMin', pLims, thisFriendScore)
-  if profileDict['volumeRatio'] >  pLims['volumeRatioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
-    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
-  if profileDict['freqRatio'] > pLims['freqRatioMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['freqRatioMax'][1]
-    if showWork: printShowWork('freqRatioMax', pLims, thisFriendScore)
-#  if profileDict['volumeRatio'] > pLims['volumeRatioMax'][0]:
-#    thisFriendScore=thisFriendScore+pLims['volumeRatioMax'][1]
-#    if showWork: printShowWork('volumeRatioMax', pLims, thisFriendScore)
-  if profileDict['daysOld'] > pLims['accountAgeMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['accountAgeMax'][1]
-    if showWork: printShowWork('accountAgeMax', pLims, thisFriendScore)
-  if profileDict['daysOld'] < pLims['accountAgeMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['accountAgeMin'][1]
-    if showWork: printShowWork('accountAgeMin', pLims, thisFriendScore)
-  if profileDict['daysLast'] > pLims['activeMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['activeMax'][1]
-    if showWork: printShowWork('activeMax', pLims, thisFriendScore)
-  if profileDict['daysLast'] > pLims['activeMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['activeMin'][1]
-    if showWork: printShowWork('activeMin', pLims, thisFriendScore)
-  if profileDict['timeFnumTweets'] > pLims['timeFnumTweetsMax'][0]:
-    thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMax'][1]
-    if showWork: printShowWork('timeFnumTweetsMax', pLims, thisFriendScore)
-  if profileDict['timeFnumTweets'] < pLims['timeFnumTweetsMin'][0]:
-    thisFriendScore=thisFriendScore+pLims['timeFnumTweetsMin'][1]
-    if showWork: printShowWork('timeFnumTweetsMin', pLims, thisFriendScore)
-  if listBool(profileDict['location'],pLists['locationIn']): #location
-    thisFriendScore=thisFriendScore+pLims['locationBool'][1]
-    if showWork: printShowWork('locationBool', pLims, thisFriendScore)
-  if listBool(profileDict['screen_name'],pLists['screen_namesNot']): #screen_name
-    thisFriendScore=thisFriendScore+pLims['screen_nameBool'][1]
-    if showWork: printShowWork('screen_nameBool', pLims, thisFriendScore)
-  if not profileDict['picBool']:
-    thisFriendScore=thisFriendScore+pLims['picBool'][1]
-    if showWork: printShowWork('picBool', pLims, thisFriendScore)
-  if not profileDict['bioBool']:
-    thisFriendScore=thisFriendScore+pLims['bioBool'][1]
-    if showWork: printShowWork('bioBool', pLims, thisFriendScore)
-  if profileDict['verified']:
-    thisFriendScore=thisFriendScore+pLims['verified'][1]
-    if showWork: printShowWork('verified', pLims, thisFriendScore)
-  return thisFriendScore
-
-def listBool(thisAttrib, thisList):
-  listBool=False
-  for i in range(len(thisList)):
-    regex=".*" + thisList[i] + ".*"
-    if re.match(regex, thisAttrib, re.IGNORECASE):
-      listBool=True
-  return listBool
-
-def locationIn(thisLocation, thisLocationList):
-  locationInBool=False
-  for i in range(len(thisLocationList)):
-    regex=".*" + thisLocationList[i] + ".*"
-    if re.match(regex, thisLocation, re.IGNORECASE):
-      locationInBool=True
-  return locationInBool
-
-def screen_namesNot(thisScreen_name, thisScreenNameList):
-  screen_nameNotBool=False
-  for i in range(len(thisScreenNameList)):
-    regex=".*" + thisScreenNameList[i] + ".*"
-    if re.match(regex, thisScreen_name, re.IGNORECASE):
-      screenNameBool=True
-  return screen_nameNotBool
-
-def inputListSearches(debug=False):
+def inputListSearches(debug=True):
   max_follows=50
   gettingSearches=True
+  gettingSearchList=True
   ils_listSearches=[]
   max_follows=raw_input("input max_follows (default=500): ")
   if debug==True: print "DEBUG: inputListSearches() ils_listSearches, max_follows: ", ils_listSearches, max_follows
@@ -1148,11 +709,12 @@ def inputListSearches(debug=False):
     max_follows=raw_input("Invalid entry! max_follows must be a number >0. Input max_follows: ")
   while gettingSearches:  
      gettingConfirm=True
-     ils_search=raw_input("input search term, (s)ubmit or e(x)it: ")
+     ils_search=raw_input("input search term, (s)ubmit, (l)ist or e(x)it: ") ### --- or read from a file, list
      if ils_search=="x":
        return "bogus", 0
      elif ils_search=="s":
        print ils_listSearches
+       ######### outer while ####################
        while gettingConfirm:
          confirm_list=raw_input("this is the list of searches you have queued, please (c)onfirm or (d)iscard: ")
          if confirm_list=='c':
@@ -1163,12 +725,32 @@ def inputListSearches(debug=False):
          else:
            inputErrorHandler(confirm_list, "Invalid option!")
          gettingConfirm=False
+     elif ils_search=="l":
+         ######### inner while ####################
+         while gettingSearchList:
+            searchList_opts=raw_input("Input name of file to read search terms or (enter) to accept the default (searchlist.txt): ")
+            if searchList_opts!="":
+                searchList_file=searchList_opts
+            else:
+                searchList_file="searchlist.txt"
+            try:
+              searchList_fileH = open(searchList_file, 'r') 
+            except:
+              traceback.print_exc()
+              traceback.print_stack()
+              callErrorHandler("Open read of "+searchList_file+" failed.")
+              break
+            searchList_set=getSets(searchList_fileH)
+            ils_listSearches=list(searchList_set)
+            print "searchList len: ", len(ils_listSearches)
+            gettingSearchList=False
      elif not ils_search=="":
        ils_listSearches.append(ils_search)
      else:
        inputErrorHandler(ils_search, "Invalid option!")
   if debug==True: print "DEBUG: inputListSearches() ils_listSearches, max_follows: ", ils_listSearches, max_follows
   return ils_listSearches, max_follows
+
 
 def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
   if aa_searchList=="bogus":
@@ -1202,10 +784,17 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
       listUsers=sorted(listProfs, key=lambda x: listProfs[x]['friendScore'], reverse=True)
       if debug==True: print "DEBUG: autoAvatar() listUsers: ", listUsers
       if debug==True: print "DEBUG: autoAvatar() len(listUsers): ", len(listUsers)
+      follow_status=True
+      follow_fails=0
       for r in range(len(listUsers)):
           if listProfs[listUsers[r]]['friendScore']>0:
             if debug==True: print "DEBUG: autoAvatar() user: ", listUsers[r], " friendScore: ",listProfs[listUsers[r]]['friendScore'] 
-            followUser(f_screen_name=listUsers[r])
+            follow_status=followUser(f_screen_name=listUsers[r])
+            if follow_status==False:
+                follow_fails=follow_fails+1
+                if follow_fails > 2:
+                    return aa_results
+#   store friendProfile in database 
             action_aa='f'
             m_flw=m_flw+1
             if debug==True: print "DEBUG: autoAvatar() aa_max_follows, m_flw: ",aa_max_follows, m_flw
@@ -1214,21 +803,13 @@ def autoAvatar(aa_searchList, aa_max_follows=500, debug=True):
           else:
             action_aa='s'
           journal(journal_file,listUsers[r],action_aa, search_term=q_term)
-#          journal(journal_file,listUsers[r],action_aa)
           storeAction(listUsers[r], action_aa)
       if debug==True: print "DEBUG: autoAvatar() outside loop - aa_max_follows, m_flw: ",aa_max_follows, m_flw
     if m_flw>=aa_max_follows: break
   if debug==True: print "search list length: ", len(aa_searchList), "\tusers examined: ", m_examined, "\tusers followed: ", m_flw
   return aa_results
 
-def printAAResults(paa_results):
-  print paa_results
-  return
-
-
-
-
-def showSearchOptions(show_term, show_lang, show_since, show_until, show_count, max_id):
+def showSearchOptions(show_term, show_lang, show_since, show_until, show_count, max_id, debug=False):
   print "\nCurrent search options:"
   print "search_term=", show_term
   print "lang=", show_lang
@@ -1239,46 +820,6 @@ def showSearchOptions(show_term, show_lang, show_since, show_until, show_count, 
   return
 
 
-#############################
-#
-## getReady
-#
-#
-
-#from Files
-suggestSet=getSets(suggest_file)
-print "suggestSet len: ", len(suggestSet)
-followSet=getSets(follow_file)
-print "followSet len: ", len(followSet)
-unfollowSet=getSets(unfollow_file)
-print "unfollowSet len: ", len(unfollowSet)
-aaSet=set.union(suggestSet,followSet,unfollowSet)
-
-#from API
-friendsSet=set()
-getMyFriends=raw_input("(g)et friends? ")
-if getMyFriends == "g":
-  followingUL=getFriends()
-  friendsSet=convertULtoSetSNs(followingUL)
-  print "friendSet len: ", len(friendsSet)
-  touchedSet=set.union(suggestSet,followSet,unfollowSet,friendsSet)
-  print "touchedSet len: ", len(touchedSet)
-else: followingUL = {}
-
-followersSet=set()
-getMyFollowers=raw_input("(g)et followers? ")
-if getMyFollowers == "g":
-  followersUL=getFollowers()
-  followersSet=convertULtoSetSNs(followersUL)
-  print "followersSet len: ", len(followersSet)
-else: followersUL = {}
-
-notFollowingBackSet=set()
-notFollowingBackSet=friendsSet.difference(followersSet)
-print "notFollowngBackSet len: ", len(notFollowingBackSet)
-
-untouchedSet=friendsSet.difference(aaSet)
-print "untouchedSet len: ", len(untouchedSet)
 
 
 
@@ -1287,6 +828,7 @@ print "untouchedSet len: ", len(untouchedSet)
 ## goMain
 #
 #
+
 
 def goMain(debug=False):
   printBanner()
@@ -1322,17 +864,17 @@ def goMain(debug=False):
             q_max_id=999999999999999999 #reset max_id for new search query
           print "search: q100(q_term="+q_term+",q_lang="+q_lang+",q_since="+q_since+",q_until="+q_until+",q_count="+str(q_count)+",q_max_id="+str(q_max_id)+")"
           r=q100(q_term,q_lang,q_since,q_until,q_count,q_max_id)
-          q_max_id=getMaxId(r) #get max_id from a list of statuses
+          q_max_id=getMaxId(r) #get max_id from a list of statuses #
           ul=convertSLtoUL(r) #convert status to users
-          ul=getULU(ul) #clean: remove dup users
+          ul=getULU(ul) #clean: remove dup users #
           ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
 #          ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
           tl=getTL(ul) #get tweets of selected users
-          pLims=getProfileLimitsPoints()
-          pLists=getProfileLists()
+          pLims=getProfileLimitsPoints() #
+          pLists=getProfileLists() #
           listProfs=getListProfileDicts(ul,tl,pLims,pLists)
           if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
-          printLUfProf(listProfs)  #report
+          printLUfProf(listProfs)  #report #
           print "Len, ul:",len(ul)
           searching=True
         else:
@@ -1360,19 +902,19 @@ def goMain(debug=False):
                 q_count=q_countInp
               optInput=True
             else:
-              inputErrorHandler(optToChange, "Try again!")
-            showSearchOptions(q_term,q_lang,q_since,q_until,q_count,q_max_id)
+              inputErrorHandler(optToChange, "Try again!") #
+            showSearchOptions(q_term,q_lang,q_since,q_until,q_count,q_max_id) #
 
     elif thisTodo == "f":
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you begin to follow!\n" + bcolors.ENDC
       else:
-        reviewPsF(listProfs, tl)
+        reviewPsF(listProfs, tl) #
     elif thisTodo == "s":
       if ul == []:
         print bcolors.FAIL + "Hey genius! You need to (g)et a list BEFORE you try to sort!\n" + bcolors.ENDC
       else:
-        listProfs=sortPs(listProfs) #returns list, where listProfs is actual a dict
+        listProfs=sortPs(listProfs) #returns list, where listProfs is actual a dict #
         if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
         printLUfProf(listProfs)
 #        ul=sortPs(ul)
@@ -1381,25 +923,16 @@ def goMain(debug=False):
       print bcolors.BOLD + bcolors.HEADER + "How's that?\n" + bcolors.ENDC
       exit()
     elif thisTodo == "u":
-      reviewFriends(followingUL,followersSet,notFollowingBackSet)
-#      ul=getFreshUL(ul,touchedSet) #clean: remove already examined users
-#      ul=getRidNullUsers(ul) #clean: protected users and any other miscreants
-#      tl=getTL(ul) #get tweets of selected users
-#      pLims=getProfileLimitsPoints()
-#      pLists=getProfileLists()
-#      listProfs=getListProfileDicts(ul,tl,pLims,pLists)
-#      if debug==True: print "DEBUG: type(listProfs)", type(listProfs)
-#      reviewPsU(listProfs, tl)
-#      reviewFriends(followingUL,followersSet,notFollowingBackSet)
+      reviewFriends(followingUL,followersSet,notFollowingBackSet) #
     elif thisTodo == "a":
-      searchList, limit_follows=inputListSearches()
-      my_results=autoAvatar(aa_searchList=searchList,aa_max_follows=int(limit_follows), debug=True)
+      searchList, limit_follows=inputListSearches() #
+      my_results=autoAvatar(aa_searchList=searchList,aa_max_follows=int(limit_follows), debug=True) #
     else:
       inputErrorHandler(thisTodo,"Try again!") 
     thisTodo = raw_input("\nMain options: (g)et, (s)ort, (f)ollow, (u)nfollow, (a)utoAvatar or (q)uit: ")
 
 def chillOut():
-  rand=randint(0,7)
+  rand=randint(0,7)+randint(0,7)
   print "dont choke twitter, wait: ",rand," seconds. time: ",datetime.datetime.now().time()
   time.sleep(rand)
 
@@ -1407,6 +940,93 @@ def closeFiles():
   journal_file.close()
   suggest_file.close()
   follow_file.close()
+
+#############################
+#
+## getReady
+#
+#
+#-----------------------------------------------------------------------
+# create twitter API object
+#-----------------------------------------------------------------------
+config = {}
+print "Twitter API object: creating..."
+try:
+  execfile("config.py", config)
+except:
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("Read of config.py failed.")
+try: 
+  api = twitter.Api(consumer_key=config["consumer_key"], 
+                  consumer_secret=config["consumer_secret"],
+                  access_token_key=config["access_key"],
+                  access_token_secret=config["access_secret"])
+#                  sleep_on_rate_limit=True)
+except: 
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("API object creation failed.")
+print "Twitter API object: created.\n"
+#-----------------------------------------------------------------------
+# open data and log files
+#-----------------------------------------------------------------------
+#def initFiles():
+try:
+  journal_file = open('aavatar.log', 'a+') 
+except:
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("Open read of avatar.log failed.")
+try:
+  suggest_file = open('suggest.dat', 'a+')
+except:
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("Open read of suggest.dat failed.")
+try:
+  follow_file = open('follow.dat', 'a+') 
+except:
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("Open read of follow.dat failed.")
+try:
+  unfollow_file = open('unfollow.dat', 'a+') 
+except:
+  traceback.print_exc()
+  traceback.print_stack()
+  callErrorHandler("Open read of unfollow.dat failed.")
+followingUL = {}
+#from Files
+suggestSet=getSets(suggest_file)
+print "suggestSet len: ", len(suggestSet)
+followSet=getSets(follow_file)
+print "followSet len: ", len(followSet)
+unfollowSet=getSets(unfollow_file)
+print "unfollowSet len: ", len(unfollowSet)
+aaSet=set.union(suggestSet,followSet,unfollowSet)
+#from API
+friendsSet=set()
+getMyFriends=raw_input("(g)et friends? ")
+if getMyFriends == "g":
+  followingUL=getFriends()
+  friendsSet=convertULtoSetSNs(followingUL)
+  print "friendSet len: ", len(friendsSet)
+  touchedSet=set.union(suggestSet,followSet,unfollowSet,friendsSet)
+  print "touchedSet len: ", len(touchedSet)
+else: followingUL = {}
+followersSet=set()
+getMyFollowers=raw_input("(g)et followers? ")
+if getMyFollowers == "g":
+  followersUL=getFollowers()
+  followersSet=convertULtoSetSNs(followersUL)
+  print "followersSet len: ", len(followersSet)
+else: followersUL = {}
+notFollowingBackSet=set()
+notFollowingBackSet=friendsSet.difference(followersSet)
+print "notFollowngBackSet len: ", len(notFollowingBackSet)
+untouchedSet=friendsSet.difference(aaSet)
+print "untouchedSet len: ", len(untouchedSet)
     
 printTwitLimits()
 goMain(debug=True)
