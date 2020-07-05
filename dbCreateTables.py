@@ -1,13 +1,24 @@
 import sqlite3
-conn = sqlite3.connect('example.db')
+
+conn = sqlite3.connect('./db/aavatar.db')
 c = conn.cursor()
-# Create table
-c.execute('''CREATE TABLE stocks
-             (date text, trans text, symbol text, qty real, price real)''')
-# Insert a row of data
-c.execute("INSERT INTO stocks VALUES ('2006-01-05','BUY','RHAT',100,35.14)")
+# Create tables
+
+c.execute('''DROP TABLE IF EXISTS twit_users''')
+c.execute('''DROP TABLE IF EXISTS twit_friends''')
+c.execute('''CREATE TABLE twit_friends
+            (id INT NOT NULL UNIQUE, id_str VARCHAR(255), name VARCHAR(255), screen_name VARCHAR(255), location VARCHAR(255), description VARCHAR(255), display_url VARCHAR(255), protected BOOLEAN, followers_count INT, friends_count INT, listed_count INT, created_at VARCHAR(255), favourites_count INT, verified BOOLEAN, statuses_count INT, lang VARCHAR(255))''')
+
+
+c.execute('''DROP TABLE IF EXISTS twit_followers''')
+c.execute('''CREATE TABLE twit_followers
+            (id INT NOT NULL UNIQUE, id_str VARCHAR(255), name VARCHAR(255), screen_name VARCHAR(255), location VARCHAR(255), description VARCHAR(255), display_url VARCHAR(255), protected BOOLEAN, followers_count INT, friends_count INT, listed_count INT, created_at VARCHAR(255), favourites_count INT, verified BOOLEAN, statuses_count INT, lang VARCHAR(255))''')
+
+
+
+c.execute('''DROP TABLE IF EXISTS aa_users''')
+c.execute(
+    '''CREATE TABLE aa_users (id INT NOT NULL UNIQUE, user_added_date NOT NULL DEFAULT current_timestamp, following BOOLEAN, followed_by BOOLEAN)''')
 # Save (commit) the changes
 conn.commit()
-# We can also close the connection if we are done with it.
-# Just be sure any changes have been committed or they will be lost.
 conn.close()

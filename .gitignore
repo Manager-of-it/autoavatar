@@ -1,1 +1,6 @@
 config.py
+Pipfile.lock
+./log/aavatar.log
+/__pycache__/
+/db/
+/.idea/
